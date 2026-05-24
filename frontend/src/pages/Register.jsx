@@ -4,9 +4,9 @@ import gsap                            from "gsap";
 import ParticlesBackground             from "../components/ParticlesBackground";
 import axios                           from "axios";
 import { Mail, Lock, User, ArrowRight } from "lucide-react";
-// Registration page with animated card and particles background
+
 const Register = () => {
-  const [form,    setForm]    = useState({
+  const [form, setForm] = useState({
     email:"", username:"", password:"", full_name:""
   });
   const [error,   setError]   = useState("");
@@ -16,14 +16,14 @@ const Register = () => {
 
   useEffect(() => {
     gsap.fromTo(cardRef.current,
-      { opacity:0, y:40, scale:0.97 },
-      { opacity:1, y:0, scale:1, duration:0.8, ease:"power3.out" }
+      { opacity:0, y:30, filter:"blur(8px)" },
+      { opacity:1, y:0, filter:"blur(0px)",
+        duration:0.9, ease:"power3.out" }
     );
   }, []);
 
-  const handleChange = (e) => {
+  const handleChange = (e) =>
     setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
-  };
 
   const handleRegister = async (e) => {
     e.preventDefault();
@@ -31,7 +31,6 @@ const Register = () => {
     setError("");
     try {
       await axios.post("http://127.0.0.1:8000/auth/register", form);
-      // Auto login after register
       const formData = new URLSearchParams();
       formData.append("username", form.email);
       formData.append("password", form.password);
@@ -40,19 +39,38 @@ const Register = () => {
       localStorage.setItem("friday_token", res.data.access_token);
       localStorage.setItem("friday_user",  JSON.stringify(res.data.user));
       gsap.to(cardRef.current, {
-        opacity:0, y:-20, duration:0.3,
-        onComplete: () => navigate("/dashboard")
+        opacity:0, y:-20, filter:"blur(8px)",
+        duration:0.4,
+        onComplete: () => navigate("/select")
       });
     } catch (err) {
       setError(err.response?.data?.detail || "Registration failed");
     } finally { setLoading(false); }
   };
 
+  const inputStyle = {
+    width       : "100%",
+    padding     : "13px 14px 13px 42px",
+    background  : "rgba(255,255,255,0.04)",
+    border      : "1px solid rgba(255,255,255,0.08)",
+    borderRadius: "12px",
+    color       : "#fff",
+    fontSize    : "0.92rem",
+    outline     : "none",
+    fontFamily  : "Inter, sans-serif",
+    transition  : "all 0.2s",
+    boxSizing   : "border-box"
+  };
+
   const fields = [
-    { name:"full_name", label:"FULL NAME",  type:"text",     icon:User,  placeholder:"Your Name"       },
-    { name:"email",     label:"EMAIL",      type:"email",    icon:Mail,  placeholder:"your@email.com"  },
-    { name:"username",  label:"USERNAME",   type:"text",     icon:User,  placeholder:"username"        },
-    { name:"password",  label:"PASSWORD",   type:"password", icon:Lock,  placeholder:"••••••••"        },
+    { name:"full_name", label:"Full Name",
+      type:"text",     icon:User, placeholder:"Your Name"      },
+    { name:"email",     label:"Email",
+      type:"email",    icon:Mail, placeholder:"your@email.com" },
+    { name:"username",  label:"Username",
+      type:"text",     icon:User, placeholder:"username"       },
+    { name:"password",  label:"Password",
+      type:"password", icon:Lock, placeholder:"••••••••"       },
   ];
 
   return (
@@ -61,174 +79,216 @@ const Register = () => {
       display       : "flex",
       alignItems    : "center",
       justifyContent: "center",
-      background    : "#0a0a0a",
+      background    : "#050508",
       position      : "relative",
       padding       : "20px"
     }}>
       <ParticlesBackground />
 
       <div ref={cardRef} style={{
-        zIndex        : 10,
-        width         : "100%",
-        maxWidth      : "420px",
-        padding       : "40px",
-        background    : "rgba(255,255,255,0.04)",
-        backdropFilter: "blur(30px)",
-        border        : "1px solid rgba(255,255,255,0.08)",
-        borderRadius  : "24px",
-        boxShadow     : "0 25px 60px rgba(0,0,0,0.5)"
+        zIndex  : 10,
+        width   : "100%",
+        maxWidth: "400px"
       }}>
         {/* Logo */}
         <div style={{
-          display    : "flex",
-          alignItems : "center",
-          gap        : "12px",
-          marginBottom: "32px"
+          display       : "flex",
+          alignItems    : "center",
+          justifyContent: "center",
+          gap           : "10px",
+          marginBottom  : "40px"
         }}>
           <div style={{
-  width        : "44px",
-  height       : "44px",
-  borderRadius : "12px",
-  overflow     : "hidden",
-  boxShadow    : "0 4px 20px rgba(255,107,43,0.4)"
-}}>
-  <img
-    src="/logo.png"
-    alt="FRIDAY"
-    style={{
-      width    : "100%",
-      height   : "100%",
-      objectFit: "contain"
-    }}
-  />
-</div>
-          <div>
-            <h1 style={{
-              fontSize    : "1.3rem",
-              fontWeight  : "700",
-              letterSpacing: "0.15rem",
-              color       : "#fff"
-            }}>FRIDAY</h1>
-            <p style={{
-              fontSize : "0.62rem",
-              color    : "rgba(255,255,255,0.3)",
-              letterSpacing: "0.1rem"
-            }}>AI PLATFORM</p>
+            width:"34px", height:"34px",
+            borderRadius:"8px", overflow:"hidden"
+          }}>
+            <img src="/logo.png" alt="FRIDAY"
+              style={{ width:"100%", height:"100%", objectFit:"contain" }} />
           </div>
+          <span style={{
+            fontFamily   : "'Bebas Neue', sans-serif",
+            fontSize     : "1.3rem",
+            letterSpacing: "0.3rem",
+            color        : "#fff"
+          }}>
+            FRIDAY
+          </span>
         </div>
 
-        <h2 style={{
-          fontSize    : "1.4rem",
-          fontWeight  : "600",
-          color       : "#fff",
-          marginBottom: "6px"
-        }}>Create account</h2>
-        <p style={{
-          fontSize    : "0.82rem",
-          color       : "rgba(255,255,255,0.35)",
-          marginBottom: "24px"
+        {/* Card */}
+        <div style={{
+          background    : "rgba(255,255,255,0.03)",
+          backdropFilter: "blur(30px)",
+          border        : "1px solid rgba(255,255,255,0.07)",
+          borderRadius  : "24px",
+          padding       : "36px 32px",
+          boxShadow     : "0 24px 60px rgba(0,0,0,0.4)"
         }}>
-          Join FRIDAY and meet your AI companion
-        </p>
-
-        {error && (
-          <div style={{
-            padding     : "10px 14px",
-            background  : "rgba(255,59,48,0.1)",
-            border      : "1px solid rgba(255,59,48,0.2)",
-            borderRadius: "10px",
-            color       : "#ff6b6b",
-            fontSize    : "0.8rem",
-            marginBottom: "16px"
+          <h2 style={{
+            fontSize    : "1.4rem",
+            fontWeight  : "600",
+            color       : "#fff",
+            margin      : "0 0 6px",
+            letterSpacing: "-0.01em"
           }}>
-            {error}
-          </div>
-        )}
+            Create account
+          </h2>
+          <p style={{
+            fontSize    : "0.85rem",
+            color       : "rgba(255,255,255,0.3)",
+            margin      : "0 0 28px"
+          }}>
+            Join FRIDAY and choose your AI companion
+          </p>
 
-        <form onSubmit={handleRegister}
-          style={{ display:"flex", flexDirection:"column", gap:"12px" }}>
-          {fields.map(field => {
-            const Icon = field.icon;
-            return (
-              <div key={field.name}>
-                <label style={{
-                  fontSize     : "0.72rem",
-                  fontWeight   : "500",
-                  color        : "rgba(255,255,255,0.4)",
-                  letterSpacing: "0.05rem",
-                  display      : "block",
-                  marginBottom : "6px"
-                }}>
-                  {field.label}
-                </label>
-                <div style={{ position:"relative" }}>
-                  <Icon size={15} color="rgba(255,255,255,0.25)"
-                    style={{ position:"absolute", left:"14px",
-                      top:"50%", transform:"translateY(-50%)" }} />
-                  <input
-                    type={field.type}
-                    name={field.name}
-                    value={form[field.name]}
-                    onChange={handleChange}
-                    required
-                    placeholder={field.placeholder}
-                    style={{
-                      width       : "100%",
-                      padding     : "12px 14px 12px 40px",
-                      background  : "rgba(255,255,255,0.05)",
-                      border      : "1px solid rgba(255,255,255,0.08)",
-                      borderRadius: "10px",
-                      color       : "#fff",
-                      fontSize    : "0.88rem",
-                      outline     : "none",
-                      fontFamily  : "Inter, sans-serif"
-                    }}
-                    onFocus={e => e.target.style.borderColor="rgba(255,107,43,0.5)"}
-                    onBlur={e  => e.target.style.borderColor="rgba(255,255,255,0.08)"}
-                  />
+          {error && (
+            <div style={{
+              padding     : "11px 14px",
+              background  : "rgba(239,68,68,0.08)",
+              border      : "1px solid rgba(239,68,68,0.2)",
+              borderRadius: "10px",
+              color       : "#f87171",
+              fontSize    : "0.82rem",
+              marginBottom: "18px"
+            }}>
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={handleRegister}
+            style={{ display:"flex", flexDirection:"column", gap:"14px" }}>
+
+            {fields.map(field => {
+              const Icon = field.icon;
+              return (
+                <div key={field.name}>
+                  <label style={{
+                    fontSize     : "0.72rem",
+                    fontWeight   : "500",
+                    color        : "rgba(255,255,255,0.35)",
+                    letterSpacing: "0.06rem",
+                    display      : "block",
+                    marginBottom : "7px",
+                    textTransform: "uppercase"
+                  }}>
+                    {field.label}
+                  </label>
+                  <div style={{ position:"relative" }}>
+                    <Icon size={14} color="rgba(255,255,255,0.2)"
+                      style={{ position:"absolute", left:"14px",
+                        top:"50%", transform:"translateY(-50%)" }} />
+                    <input
+                      type={field.type}
+                      name={field.name}
+                      value={form[field.name]}
+                      onChange={handleChange}
+                      required
+                      placeholder={field.placeholder}
+                      style={inputStyle}
+                      onFocus={e => {
+                        e.target.style.borderColor =
+                          "rgba(255,255,255,0.2)";
+                        e.target.style.background  =
+                          "rgba(255,255,255,0.06)";
+                      }}
+                      onBlur={e => {
+                        e.target.style.borderColor =
+                          "rgba(255,255,255,0.08)";
+                        e.target.style.background  =
+                          "rgba(255,255,255,0.04)";
+                      }}
+                    />
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
 
-          <button type="submit" disabled={loading} style={{
-            padding      : "14px",
-            background   : loading
-              ? "rgba(255,107,43,0.4)"
-              : "linear-gradient(135deg, #FF6B2B, #ff9a6b)",
-            border       : "none",
-            borderRadius : "12px",
-            color        : "#fff",
-            fontSize     : "0.88rem",
-            fontWeight   : "600",
-            cursor       : loading ? "not-allowed" : "pointer",
-            display      : "flex",
-            alignItems   : "center",
-            justifyContent: "center",
-            gap          : "8px",
-            marginTop    : "4px",
-            boxShadow    : "0 4px 20px rgba(255,107,43,0.3)",
-            transition   : "all 0.2s"
+            <button
+              type="submit"
+              disabled={loading}
+              style={{
+                padding      : "14px",
+                background   : loading
+                  ? "rgba(255,255,255,0.06)"
+                  : "rgba(255,255,255,0.9)",
+                border       : "1px solid rgba(255,255,255,0.1)",
+                borderRadius : "12px",
+                color        : loading
+                  ? "rgba(255,255,255,0.3)" : "#050508",
+                fontSize     : "0.9rem",
+                fontWeight   : "600",
+                cursor       : loading ? "not-allowed" : "pointer",
+                display      : "flex",
+                alignItems   : "center",
+                justifyContent: "center",
+                gap          : "8px",
+                marginTop    : "4px",
+                transition   : "all 0.2s",
+                fontFamily   : "Inter, sans-serif",
+                letterSpacing: "0.01em"
+              }}
+              onMouseEnter={e => {
+                if (!loading) e.currentTarget.style.background = "#fff";
+              }}
+              onMouseLeave={e => {
+                if (!loading)
+                  e.currentTarget.style.background =
+                    "rgba(255,255,255,0.9)";
+              }}
+            >
+              {loading ? "Creating account..." : "Create Account"}
+              {!loading && <ArrowRight size={15} />}
+            </button>
+          </form>
+
+          <div style={{
+            display   : "flex",
+            alignItems: "center",
+            gap       : "12px",
+            margin    : "24px 0"
           }}>
-            {loading ? "Creating account..." : "Create Account"}
-            {!loading && <ArrowRight size={16} />}
-          </button>
-        </form>
+            <div style={{
+              flex:"1", height:"1px",
+              background:"rgba(255,255,255,0.07)"
+            }} />
+            <span style={{
+              fontSize:"0.72rem",
+              color:"rgba(255,255,255,0.2)"
+            }}>
+              or
+            </span>
+            <div style={{
+              flex:"1", height:"1px",
+              background:"rgba(255,255,255,0.07)"
+            }} />
+          </div>
+
+          <p style={{
+            textAlign: "center",
+            fontSize : "0.82rem",
+            color    : "rgba(255,255,255,0.25)",
+            margin   : 0
+          }}>
+            Already have an account?{" "}
+            <Link to="/login" style={{
+              color         : "rgba(255,255,255,0.7)",
+              textDecoration: "none",
+              fontWeight    : "500",
+              borderBottom  : "1px solid rgba(255,255,255,0.2)"
+            }}>
+              Sign in
+            </Link>
+          </p>
+        </div>
 
         <p style={{
-          textAlign : "center",
-          marginTop : "20px",
-          fontSize  : "0.78rem",
-          color     : "rgba(255,255,255,0.3)"
+          textAlign    : "center",
+          marginTop    : "24px",
+          fontSize     : "0.68rem",
+          color        : "rgba(255,255,255,0.12)",
+          letterSpacing: "0.08rem"
         }}>
-          Already have an account?{" "}
-          <Link to="/login" style={{
-            color         : "#FF6B2B",
-            textDecoration: "none",
-            fontWeight    : "500"
-          }}>
-            Sign in
-          </Link>
+          FRIDAY AI PLATFORM
         </p>
       </div>
     </div>

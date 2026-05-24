@@ -3,7 +3,7 @@ import { useNavigate, Link }           from "react-router-dom";
 import gsap                            from "gsap";
 import ParticlesBackground             from "../components/ParticlesBackground";
 import axios                           from "axios";
-import { Mail, Lock, ArrowRight } from "lucide-react";
+import { Mail, Lock, ArrowRight }      from "lucide-react";
 
 const Login = () => {
   const [email,    setEmail]    = useState("");
@@ -12,11 +12,12 @@ const Login = () => {
   const [loading,  setLoading]  = useState(false);
   const cardRef  = useRef(null);
   const navigate = useNavigate();
-// Animate card in on mount
+
   useEffect(() => {
     gsap.fromTo(cardRef.current,
-      { opacity: 0, y: 40, scale: 0.97 },
-      { opacity: 1, y: 0, scale: 1, duration: 0.8, ease: "power3.out" }
+      { opacity:0, y:30, filter:"blur(8px)" },
+      { opacity:1, y:0, filter:"blur(0px)",
+        duration:0.9, ease:"power3.out" }
     );
   }, []);
 
@@ -33,20 +34,35 @@ const Login = () => {
       localStorage.setItem("friday_token", res.data.access_token);
       localStorage.setItem("friday_user",  JSON.stringify(res.data.user));
       gsap.to(cardRef.current, {
-        opacity: 0, y: -20, duration: 0.3,
+        opacity:0, y:-20, filter:"blur(8px)",
+        duration:0.4,
         onComplete: () => navigate("/dashboard")
       });
     } catch {
       setError("Invalid email or password");
       gsap.to(cardRef.current, {
         keyframes: [
-          { x: -8, duration: 0.08 },
-          { x:  8, duration: 0.08 },
-          { x: -8, duration: 0.08 },
-          { x:  0, duration: 0.08 }
+          { x:-10, duration:0.07 },
+          { x: 10, duration:0.07 },
+          { x:-10, duration:0.07 },
+          { x:  0, duration:0.07 }
         ]
       });
     } finally { setLoading(false); }
+  };
+
+  const inputStyle = {
+    width       : "100%",
+    padding     : "13px 14px 13px 42px",
+    background  : "rgba(255,255,255,0.04)",
+    border      : "1px solid rgba(255,255,255,0.08)",
+    borderRadius: "12px",
+    color       : "#fff",
+    fontSize    : "0.92rem",
+    outline     : "none",
+    fontFamily  : "Inter, sans-serif",
+    transition  : "all 0.2s",
+    boxSizing   : "border-box"
   };
 
   return (
@@ -55,208 +71,245 @@ const Login = () => {
       display       : "flex",
       alignItems    : "center",
       justifyContent: "center",
-      background    : "#0a0a0a",
-      position      : "relative"
+      background    : "#050508",
+      position      : "relative",
+      padding       : "20px"
     }}>
       <ParticlesBackground />
 
       <div ref={cardRef} style={{
         zIndex        : 10,
         width         : "100%",
-        maxWidth      : "420px",
-        padding       : "40px",
-        background    : "rgba(255,255,255,0.04)",
-        backdropFilter: "blur(30px)",
-        border        : "1px solid rgba(255,255,255,0.08)",
-        borderRadius  : "24px",
-        boxShadow     : "0 25px 60px rgba(0,0,0,0.5)"
+        maxWidth      : "400px"
       }}>
         {/* Logo */}
         <div style={{
           display      : "flex",
           alignItems   : "center",
-          gap          : "12px",
-          marginBottom : "32px"
+          justifyContent: "center",
+          gap          : "10px",
+          marginBottom : "40px"
         }}>
-<div style={{
-  width        : "44px",
-  height       : "44px",
-  borderRadius : "12px",
-  overflow     : "hidden",
-  boxShadow    : "0 4px 20px rgba(255,107,43,0.4)"
-}}>
-  <img
-    src="/logo.png"
-    alt="FRIDAY"
-    style={{
-      width    : "100%",
-      height   : "100%",
-      objectFit: "contain"
-    }}
-  />
-</div>
-          <div>
-            <h1 style={{
-              fontSize    : "1.3rem",
-              fontWeight  : "700",
-              letterSpacing: "0.15rem",
-              color       : "#fff"
-            }}>FRIDAY</h1>
-            <p style={{
-              fontSize : "0.62rem",
-              color    : "rgba(255,255,255,0.3)",
-              letterSpacing: "0.1rem"
-            }}>AI PLATFORM</p>
+          <div style={{
+            width:"34px", height:"34px",
+            borderRadius:"8px", overflow:"hidden"
+          }}>
+            <img src="/logo.png" alt="FRIDAY"
+              style={{ width:"100%", height:"100%", objectFit:"contain" }} />
           </div>
+          <span style={{
+            fontFamily   : "'Bebas Neue', sans-serif",
+            fontSize     : "1.3rem",
+            letterSpacing: "0.3rem",
+            color        : "#fff"
+          }}>
+            FRIDAY
+          </span>
         </div>
 
-        <h2 style={{
-          fontSize    : "1.4rem",
-          fontWeight  : "600",
-          color       : "#fff",
-          marginBottom: "6px"
+        {/* Card */}
+        <div style={{
+          background    : "rgba(255,255,255,0.03)",
+          backdropFilter: "blur(30px)",
+          border        : "1px solid rgba(255,255,255,0.07)",
+          borderRadius  : "24px",
+          padding       : "36px 32px",
+          boxShadow     : "0 24px 60px rgba(0,0,0,0.4)"
         }}>
-          Welcome back
-        </h2>
-        <p style={{
-          fontSize    : "0.82rem",
-          color       : "rgba(255,255,255,0.35)",
-          marginBottom: "28px"
-        }}>
-          Sign in to access your AI platform
-        </p>
+          <h2 style={{
+            fontSize    : "1.4rem",
+            fontWeight  : "600",
+            color       : "#fff",
+            margin      : "0 0 6px",
+            letterSpacing: "-0.01em"
+          }}>
+            Welcome back
+          </h2>
+          <p style={{
+            fontSize    : "0.85rem",
+            color       : "rgba(255,255,255,0.3)",
+            marginBottom: "28px",
+            margin      : "0 0 28px"
+          }}>
+            Sign in to your FRIDAY account
+          </p>
 
-        {error && (
+          {error && (
+            <div style={{
+              padding     : "11px 14px",
+              background  : "rgba(239,68,68,0.08)",
+              border      : "1px solid rgba(239,68,68,0.2)",
+              borderRadius: "10px",
+              color       : "#f87171",
+              fontSize    : "0.82rem",
+              marginBottom: "18px"
+            }}>
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={handleLogin}
+            style={{ display:"flex", flexDirection:"column", gap:"14px" }}>
+
+            {/* Email */}
+            <div>
+              <label style={{
+                fontSize     : "0.72rem",
+                fontWeight   : "500",
+                color        : "rgba(255,255,255,0.35)",
+                letterSpacing: "0.06rem",
+                display      : "block",
+                marginBottom : "7px",
+                textTransform: "uppercase"
+              }}>
+                Email
+              </label>
+              <div style={{ position:"relative" }}>
+                <Mail size={14} color="rgba(255,255,255,0.2)"
+                  style={{ position:"absolute", left:"14px",
+                    top:"50%", transform:"translateY(-50%)" }} />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  required
+                  placeholder="your@email.com"
+                  style={inputStyle}
+                  onFocus={e => {
+                    e.target.style.borderColor = "rgba(255,255,255,0.2)";
+                    e.target.style.background  = "rgba(255,255,255,0.06)";
+                  }}
+                  onBlur={e => {
+                    e.target.style.borderColor = "rgba(255,255,255,0.08)";
+                    e.target.style.background  = "rgba(255,255,255,0.04)";
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Password */}
+            <div>
+              <label style={{
+                fontSize     : "0.72rem",
+                fontWeight   : "500",
+                color        : "rgba(255,255,255,0.35)",
+                letterSpacing: "0.06rem",
+                display      : "block",
+                marginBottom : "7px",
+                textTransform: "uppercase"
+              }}>
+                Password
+              </label>
+              <div style={{ position:"relative" }}>
+                <Lock size={14} color="rgba(255,255,255,0.2)"
+                  style={{ position:"absolute", left:"14px",
+                    top:"50%", transform:"translateY(-50%)" }} />
+                <input
+                  type="password"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  required
+                  placeholder="••••••••"
+                  style={inputStyle}
+                  onFocus={e => {
+                    e.target.style.borderColor = "rgba(255,255,255,0.2)";
+                    e.target.style.background  = "rgba(255,255,255,0.06)";
+                  }}
+                  onBlur={e => {
+                    e.target.style.borderColor = "rgba(255,255,255,0.08)";
+                    e.target.style.background  = "rgba(255,255,255,0.04)";
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Button */}
+            <button
+              type="submit"
+              disabled={loading}
+              style={{
+                padding      : "14px",
+                background   : loading
+                  ? "rgba(255,255,255,0.06)"
+                  : "rgba(255,255,255,0.9)",
+                border       : "1px solid rgba(255,255,255,0.1)",
+                borderRadius : "12px",
+                color        : loading ? "rgba(255,255,255,0.3)" : "#050508",
+                fontSize     : "0.9rem",
+                fontWeight   : "600",
+                cursor       : loading ? "not-allowed" : "pointer",
+                display      : "flex",
+                alignItems   : "center",
+                justifyContent: "center",
+                gap          : "8px",
+                marginTop    : "4px",
+                transition   : "all 0.2s",
+                fontFamily   : "Inter, sans-serif",
+                letterSpacing: "0.01em"
+              }}
+              onMouseEnter={e => {
+                if (!loading) e.currentTarget.style.background = "#fff";
+              }}
+              onMouseLeave={e => {
+                if (!loading)
+                  e.currentTarget.style.background = "rgba(255,255,255,0.9)";
+              }}
+            >
+              {loading ? "Signing in..." : "Sign In"}
+              {!loading && <ArrowRight size={15} />}
+            </button>
+          </form>
+
+          {/* Divider */}
           <div style={{
-            padding      : "10px 14px",
-            background   : "rgba(255,59,48,0.1)",
-            border       : "1px solid rgba(255,59,48,0.2)",
-            borderRadius : "10px",
-            color        : "#ff6b6b",
-            fontSize     : "0.8rem",
-            marginBottom : "16px"
+            display    : "flex",
+            alignItems : "center",
+            gap        : "12px",
+            margin     : "24px 0"
           }}>
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleLogin} style={{ display:"flex", flexDirection:"column", gap:"14px" }}>
-          <div>
-            <label style={{
-              fontSize     : "0.72rem",
-              fontWeight   : "500",
-              color        : "rgba(255,255,255,0.4)",
-              letterSpacing: "0.05rem",
-              display      : "block",
-              marginBottom : "6px"
+            <div style={{
+              flex:"1", height:"1px",
+              background:"rgba(255,255,255,0.07)"
+            }} />
+            <span style={{
+              fontSize:"0.72rem",
+              color:"rgba(255,255,255,0.2)"
             }}>
-              EMAIL
-            </label>
-            <div style={{ position: "relative" }}>
-              <Mail size={15} color="rgba(255,255,255,0.25)"
-                style={{ position:"absolute", left:"14px", top:"50%", transform:"translateY(-50%)" }} />
-              <input
-                type="email" value={email}
-                onChange={e => setEmail(e.target.value)}
-                required
-                placeholder="your@email.com"
-                style={{
-                  width       : "100%",
-                  padding     : "12px 14px 12px 40px",
-                  background  : "rgba(255,255,255,0.05)",
-                  border      : "1px solid rgba(255,255,255,0.08)",
-                  borderRadius: "10px",
-                  color       : "#fff",
-                  fontSize    : "0.88rem",
-                  outline     : "none",
-                  fontFamily  : "Inter, sans-serif"
-                }}
-                onFocus={e => e.target.style.borderColor = "rgba(255,107,43,0.5)"}
-                onBlur={e  => e.target.style.borderColor = "rgba(255,255,255,0.08)"}
-              />
-            </div>
+              or
+            </span>
+            <div style={{
+              flex:"1", height:"1px",
+              background:"rgba(255,255,255,0.07)"
+            }} />
           </div>
 
-          <div>
-            <label style={{
-              fontSize     : "0.72rem",
-              fontWeight   : "500",
-              color        : "rgba(255,255,255,0.4)",
-              letterSpacing: "0.05rem",
-              display      : "block",
-              marginBottom : "6px"
-            }}>
-              PASSWORD
-            </label>
-            <div style={{ position: "relative" }}>
-              <Lock size={15} color="rgba(255,255,255,0.25)"
-                style={{ position:"absolute", left:"14px", top:"50%", transform:"translateY(-50%)" }} />
-              <input
-                type="password" value={password}
-                onChange={e => setPassword(e.target.value)}
-                required
-                placeholder="••••••••"
-                style={{
-                  width       : "100%",
-                  padding     : "12px 14px 12px 40px",
-                  background  : "rgba(255,255,255,0.05)",
-                  border      : "1px solid rgba(255,255,255,0.08)",
-                  borderRadius: "10px",
-                  color       : "#fff",
-                  fontSize    : "0.88rem",
-                  outline     : "none",
-                  fontFamily  : "Inter, sans-serif"
-                }}
-                onFocus={e => e.target.style.borderColor = "rgba(255,107,43,0.5)"}
-                onBlur={e  => e.target.style.borderColor = "rgba(255,255,255,0.08)"}
-              />
-            </div>
-          </div>
-
-          <button type="submit" disabled={loading} style={{
-            padding      : "14px",
-            background   : loading
-              ? "rgba(255,107,43,0.4)"
-              : "linear-gradient(135deg, #FF6B2B, #ff9a6b)",
-            border       : "none",
-            borderRadius : "12px",
-            color        : "#fff",
-            fontSize     : "0.88rem",
-            fontWeight   : "600",
-            cursor       : loading ? "not-allowed" : "pointer",
-            display      : "flex",
-            alignItems   : "center",
-            justifyContent: "center",
-            gap          : "8px",
-            marginTop    : "4px",
-            boxShadow    : "0 4px 20px rgba(255,107,43,0.3)",
-            transition   : "all 0.2s"
-          }}
-          onMouseEnter={e => {
-            if (!loading) e.currentTarget.style.boxShadow = "0 6px 25px rgba(255,107,43,0.5)";
-          }}
-          onMouseLeave={e => {
-            e.currentTarget.style.boxShadow = "0 4px 20px rgba(255,107,43,0.3)";
+          <p style={{
+            textAlign : "center",
+            fontSize  : "0.82rem",
+            color     : "rgba(255,255,255,0.25)",
+            margin    : 0
           }}>
-            {loading ? "Signing in..." : "Sign In"}
-            {!loading && <ArrowRight size={16} />}
-          </button>
-        </form>
+            No account?{" "}
+            <Link to="/register" style={{
+              color         : "rgba(255,255,255,0.7)",
+              textDecoration: "none",
+              fontWeight    : "500",
+              borderBottom  : "1px solid rgba(255,255,255,0.2)"
+            }}>
+              Create one
+            </Link>
+          </p>
+        </div>
 
+        {/* Bottom tag */}
         <p style={{
-          textAlign  : "center",
-          marginTop  : "20px",
-          fontSize   : "0.78rem",
-          color      : "rgba(255,255,255,0.3)"
+          textAlign    : "center",
+          marginTop    : "24px",
+          fontSize     : "0.68rem",
+          color        : "rgba(255,255,255,0.12)",
+          letterSpacing: "0.08rem"
         }}>
-          No account?{" "}
-          <Link to="/register" style={{
-            color         : "#FF6B2B",
-            textDecoration: "none",
-            fontWeight    : "500"
-          }}>
-            Create one
-          </Link>
+          FRIDAY AI PLATFORM
         </p>
       </div>
     </div>
