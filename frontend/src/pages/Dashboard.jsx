@@ -335,7 +335,6 @@ const Dashboard = () => {
         {messages.map((msg, i) => {
           const isUser    = msg.role === "user";
           const isThinking= msg.content === "thinking";
-          const meta      = AGENT_META[msg.agent] || AGENT_META.auto;
 
           return (
             <div key={i} style={{
