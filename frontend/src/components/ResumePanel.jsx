@@ -3,7 +3,7 @@ import gsap                             from "gsap";
 import axios                            from "axios";
 import {
   X, Upload, FileText, Briefcase, TrendingUp,
-  Award, ChevronRight, Download, Loader,
+  ChevronRight, Download, Loader,
   CheckCircle, AlertCircle, Star, MapPin,
   DollarSign, Clock, ExternalLink, BookOpen,
   MessageSquare, BarChart2
@@ -12,18 +12,19 @@ import {
 const API = "http://127.0.0.1:8000";
 
 const ResumePanel = ({ isOpen, onClose, accentColor = "#FF6B2B" }) => {
-  const [activeTab,    setActiveTab]    = useState("upload");
-  const [uploading,    setUploading]    = useState(false);
-  const [analysis,     setAnalysis]     = useState(null);
-  const [improved,     setImproved]     = useState(null);
-  const [jobs,         setJobs]         = useState([]);
-  const [skillsGap,    setSkillsGap]    = useState(null);
-  const [salary,       setSalary]       = useState(null);
-  const [coverLetter,  setCoverLetter]  = useState("");
-  const [interviewPrep,setInterviewPrep]= useState(null);
-  const [selectedJob,  setSelectedJob]  = useState(null);
-  const [loading,      setLoading]      = useState("");
-  const [preferences,  setPreferences]  = useState({
+  const [activeTab,     setActiveTab]     = useState("upload");
+  const [uploading,     setUploading]     = useState(false);
+  const [analysis,      setAnalysis]      = useState(null);
+  const [improved,      setImproved]      = useState(null);
+  const [jobs,          setJobs]          = useState([]);
+  const [skillsGap,     setSkillsGap]     = useState(null);
+  const [salary,        setSalary]        = useState(null);
+  const [coverLetter,   setCoverLetter]   = useState("");
+  const [interviewPrep, setInterviewPrep] = useState(null);
+  const [selectedJob,   setSelectedJob]   = useState(null);
+  const [loading,       setLoading]       = useState("");
+  const [jobSource,     setJobSource]     = useState("ai");
+  const [preferences,   setPreferences]   = useState({
     location        : "Calgary",
     industry        : "Technology",
     job_type        : "Full-time",
@@ -53,28 +54,23 @@ const ResumePanel = ({ isOpen, onClose, accentColor = "#FF6B2B" }) => {
   const handleUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
     setUploading(true);
     setAnalysis(null);
-
     try {
       const formData = new FormData();
-      formData.append("file",            file);
-      formData.append("location",        preferences.location);
-      formData.append("industry",        preferences.industry);
-      formData.append("job_type",        preferences.job_type);
-      formData.append("experience_level",preferences.experience_level);
-      formData.append("salary_range",    preferences.salary_range);
-
+      formData.append("file",             file);
+      formData.append("location",         preferences.location);
+      formData.append("industry",         preferences.industry);
+      formData.append("job_type",         preferences.job_type);
+      formData.append("experience_level", preferences.experience_level);
+      formData.append("salary_range",     preferences.salary_range);
       const token = localStorage.getItem("friday_token");
       const res   = await axios.post(
         `${API}/api/resume/upload`, formData,
         { headers: { Authorization: `Bearer ${token}` }}
       );
-
       setAnalysis(res.data.analysis);
       setActiveTab("analysis");
-
     } catch (err) {
       alert(err.response?.data?.detail || "Upload failed");
     } finally {
@@ -83,41 +79,23 @@ const ResumePanel = ({ isOpen, onClose, accentColor = "#FF6B2B" }) => {
   };
 
   const handleImprove = async () => {
-  setLoading("improve");
-  try {
-    const token = localStorage.getItem("friday_token");
-    
-    // Debug check
-    if (!token) {
-      alert("Not logged in! Please login again.");
-      return;
-    }
-
-    const res = await axios.post(
-      `${API}/api/resume/improve`,
-      {},
-      { headers: { Authorization: `Bearer ${token}` }}
-    );
-
-    if (res.data.success) {
-      setImproved(res.data.result);
-      setActiveTab("improved");
-    } else {
-      alert("Improve failed: " + JSON.stringify(res.data));
-    }
-//added detailed error handling to show exact error message from backend
-  } catch (err) {
-    // Show exact error
-    const errorMsg = err.response?.data?.detail
-      || err.response?.data
-      || err.message
-      || "Unknown error";
-    alert("Error: " + JSON.stringify(errorMsg));
-    console.error("Full error:", err.response);
-  } finally {
-    setLoading("");
-  }
-};
+    setLoading("improve");
+    try {
+      const token = localStorage.getItem("friday_token");
+      if (!token) { alert("Not logged in!"); return; }
+      const res = await axios.post(
+        `${API}/api/resume/improve`, {},
+        { headers: { Authorization: `Bearer ${token}` }}
+      );
+      if (res.data.success) {
+        setImproved(res.data.result);
+        setActiveTab("improved");
+      }
+    } catch (err) {
+      const msg = err.response?.data?.detail || err.message || "Unknown error";
+      alert("Error: " + JSON.stringify(msg));
+    } finally { setLoading(""); }
+  };
 
   const handleGetJobs = async () => {
     setLoading("jobs");
@@ -128,6 +106,7 @@ const ResumePanel = ({ isOpen, onClose, accentColor = "#FF6B2B" }) => {
         { headers: { Authorization: `Bearer ${token}` }}
       );
       setJobs(res.data.jobs);
+      setJobSource(res.data.source || "ai");
       setActiveTab("jobs");
     } catch { alert("Failed to fetch jobs"); }
     finally { setLoading(""); }
@@ -168,11 +147,8 @@ const ResumePanel = ({ isOpen, onClose, accentColor = "#FF6B2B" }) => {
       const token = localStorage.getItem("friday_token");
       const res   = await axios.post(
         `${API}/api/resume/cover-letter`,
-        {
-          job_title      : job.title,
-          company        : job.company,
-          job_description: job.description
-        },
+        { job_title: job.title, company: job.company,
+          job_description: job.description },
         { headers: { Authorization: `Bearer ${token}` }}
       );
       setCoverLetter(res.data.cover_letter);
@@ -213,80 +189,79 @@ const ResumePanel = ({ isOpen, onClose, accentColor = "#FF6B2B" }) => {
   };
 
   const tabs = [
-    { id:"upload",    icon: Upload,       label:"Upload"   },
-    { id:"analysis",  icon: BarChart2,    label:"Analysis" },
-    { id:"improved",  icon: TrendingUp,   label:"Improved" },
-    { id:"jobs",      icon: Briefcase,    label:"Jobs"     },
-    { id:"skills",    icon: BookOpen,     label:"Skills"   },
-    { id:"salary",    icon: DollarSign,   label:"Salary"   },
-    { id:"cover",     icon: FileText,     label:"Cover"    },
-    { id:"interview", icon: MessageSquare,label:"Interview"},
+    { id:"upload",    icon: Upload,        label:"Upload"    },
+    { id:"analysis",  icon: BarChart2,     label:"Analysis"  },
+    { id:"improved",  icon: TrendingUp,    label:"Improved"  },
+    { id:"jobs",      icon: Briefcase,     label:"Jobs"      },
+    { id:"skills",    icon: BookOpen,      label:"Skills"    },
+    { id:"salary",    icon: DollarSign,    label:"Salary"    },
+    { id:"cover",     icon: FileText,      label:"Cover"     },
+    { id:"interview", icon: MessageSquare, label:"Interview" },
   ];
 
   return (
     <>
       {/* Backdrop */}
-      <div
-        onClick={handleClose}
-        style={{
-          position  : "fixed",
-          inset     : 0,
-          background: "rgba(0,0,0,0.4)",
-          zIndex    : 20,
-          backdropFilter: "blur(2px)"
-        }}
-      />
+      <div onClick={handleClose} style={{
+        position      : "fixed",
+        inset         : 0,
+        background    : "rgba(0,0,0,0.5)",
+        zIndex        : 20,
+        backdropFilter: "blur(3px)"
+      }} />
 
       {/* Panel */}
       <div ref={panelRef} style={{
-        position      : "fixed",
-        top           : 0,
-        right         : 0,
-        width         : "480px",
-        height        : "100vh",
-        background    : "#0f0f0f",
-        border        : "1px solid rgba(255,255,255,0.08)",
-        borderRight   : "none",
-        zIndex        : 30,
-        display       : "flex",
-        flexDirection : "column",
-        overflow      : "hidden",
-        boxShadow     : "-20px 0 60px rgba(0,0,0,0.5)"
+        position     : "fixed",
+        top          : 0,
+        right        : 0,
+        width        : "500px",
+        height       : "100vh",
+        background   : "#0a0a0f",
+        border       : "1px solid rgba(255,255,255,0.07)",
+        borderRight  : "none",
+        zIndex       : 30,
+        display      : "flex",
+        flexDirection: "column",
+        overflow     : "hidden",
+        boxShadow    : "-24px 0 80px rgba(0,0,0,0.6)"
       }}>
 
-        {/* Panel Header */}
+        {/* Header */}
         <div style={{
-          padding      : "20px",
-          borderBottom : "1px solid rgba(255,255,255,0.06)",
-          display      : "flex",
-          alignItems   : "center",
+          padding       : "18px 20px",
+          borderBottom  : "1px solid rgba(255,255,255,0.06)",
+          display       : "flex",
+          alignItems    : "center",
           justifyContent: "space-between",
-          flexShrink   : 0
+          flexShrink    : 0
         }}>
-          <div style={{ display:"flex", alignItems:"center", gap:"10px" }}>
+          <div style={{ display:"flex", alignItems:"center", gap:"12px" }}>
             <div style={{
-              width        : "32px",
-              height       : "32px",
-              borderRadius : "8px",
-              background   : `${accentColor}20`,
-              border       : `1px solid ${accentColor}40`,
+              width        : "34px",
+              height       : "34px",
+              borderRadius : "10px",
+              background   : `${accentColor}15`,
+              border       : `1px solid ${accentColor}30`,
               display      : "flex",
               alignItems   : "center",
               justifyContent: "center"
             }}>
-              <Briefcase size={15} color={accentColor} />
+              <Briefcase size={16} color={accentColor} />
             </div>
             <div>
               <h2 style={{
                 fontSize  : "0.95rem",
                 fontWeight: "600",
-                color     : "#fff"
+                color     : "#fff",
+                margin    : 0
               }}>
                 Career Assistant
               </h2>
               <p style={{
                 fontSize: "0.65rem",
-                color   : "rgba(255,255,255,0.3)"
+                color   : "rgba(255,255,255,0.3)",
+                margin  : 0
               }}>
                 Resume · Jobs · Interview
               </p>
@@ -298,7 +273,8 @@ const ResumePanel = ({ isOpen, onClose, accentColor = "#FF6B2B" }) => {
             borderRadius: "8px",
             padding     : "6px",
             cursor      : "pointer",
-            display     : "flex"
+            display     : "flex",
+            transition  : "all 0.2s"
           }}>
             <X size={16} color="rgba(255,255,255,0.5)" />
           </button>
@@ -306,12 +282,12 @@ const ResumePanel = ({ isOpen, onClose, accentColor = "#FF6B2B" }) => {
 
         {/* Tab Bar */}
         <div style={{
-          display   : "flex",
-          overflowX : "auto",
-          padding   : "8px 12px",
-          gap       : "4px",
-          borderBottom: "1px solid rgba(255,255,255,0.06)",
-          flexShrink: 0,
+          display      : "flex",
+          overflowX    : "auto",
+          padding      : "8px 12px",
+          gap          : "4px",
+          borderBottom : "1px solid rgba(255,255,255,0.05)",
+          flexShrink   : 0,
           scrollbarWidth: "none"
         }}>
           {tabs.map(tab => {
@@ -320,25 +296,25 @@ const ResumePanel = ({ isOpen, onClose, accentColor = "#FF6B2B" }) => {
             return (
               <button key={tab.id} onClick={() => setActiveTab(tab.id)}
                 style={{
-                  display      : "flex",
-                  alignItems   : "center",
-                  gap          : "5px",
-                  padding      : "6px 10px",
-                  background   : isActive ? `${accentColor}18` : "transparent",
-                  border       : isActive
+                  display     : "flex",
+                  alignItems  : "center",
+                  gap         : "5px",
+                  padding     : "6px 10px",
+                  background  : isActive ? `${accentColor}18` : "transparent",
+                  border      : isActive
                     ? `1px solid ${accentColor}35`
                     : "1px solid transparent",
-                  borderRadius : "8px",
-                  cursor       : "pointer",
-                  whiteSpace   : "nowrap",
-                  flexShrink   : 0,
-                  transition   : "all 0.2s"
+                  borderRadius: "8px",
+                  cursor      : "pointer",
+                  whiteSpace  : "nowrap",
+                  flexShrink  : 0,
+                  transition  : "all 0.2s"
                 }}>
-                <Icon size={11} color={isActive
-                  ? accentColor : "rgba(255,255,255,0.35)"} />
+                <Icon size={11}
+                  color={isActive ? accentColor : "rgba(255,255,255,0.3)"} />
                 <span style={{
                   fontSize : "0.68rem",
-                  color    : isActive ? "#fff" : "rgba(255,255,255,0.35)",
+                  color    : isActive ? "#fff" : "rgba(255,255,255,0.3)",
                   fontWeight: isActive ? "600" : "400"
                 }}>
                   {tab.label}
@@ -348,47 +324,40 @@ const ResumePanel = ({ isOpen, onClose, accentColor = "#FF6B2B" }) => {
           })}
         </div>
 
-        {/* Panel Content */}
-        <div style={{
-          flex     : 1,
-          overflowY: "auto",
-          padding  : "16px"
-        }}>
+        {/* Content */}
+        <div style={{ flex:1, overflowY:"auto", padding:"16px" }}>
 
-          {/* ── UPLOAD TAB ── */}
+          {/* ── UPLOAD ── */}
           {activeTab === "upload" && (
-            <div style={{
-              display      : "flex",
-              flexDirection: "column",
-              gap          : "16px"
-            }}>
+            <div style={{ display:"flex", flexDirection:"column", gap:"16px" }}>
               <p style={{
-                fontSize: "0.8rem",
-                color   : "rgba(255,255,255,0.4)",
-                lineHeight: "1.5"
+                fontSize  : "0.82rem",
+                color     : "rgba(255,255,255,0.35)",
+                lineHeight: "1.6",
+                margin    : 0
               }}>
                 Upload your resume and set preferences to get
                 personalized job matches, improvements, and more.
               </p>
 
               {/* Preferences */}
-              <div style={{ ...glass, padding: "16px" }}>
+              <div style={{ ...glass, padding:"16px" }}>
                 <p style={{
-                  fontSize     : "0.7rem",
+                  fontSize     : "0.68rem",
                   color        : accentColor,
                   letterSpacing: "0.1rem",
-                  marginBottom : "12px",
-                  fontWeight   : "600"
+                  marginBottom : "14px",
+                  fontWeight   : "600",
+                  margin       : "0 0 14px"
                 }}>
                   YOUR PREFERENCES
                 </p>
-
                 {[
-                  { key:"location",  label:"Location",
+                  { key:"location", label:"Location",
                     opts:["Calgary","Edmonton","Toronto","Vancouver","Remote"] },
-                  { key:"industry",  label:"Industry",
+                  { key:"industry", label:"Industry",
                     opts:["Technology","Finance","Healthcare","Marketing","Engineering"] },
-                  { key:"job_type",  label:"Job Type",
+                  { key:"job_type", label:"Job Type",
                     opts:["Full-time","Part-time","Contract","Internship"] },
                   { key:"experience_level", label:"Experience",
                     opts:["Entry-level","Mid-level","Senior","Lead"] },
@@ -399,9 +368,10 @@ const ResumePanel = ({ isOpen, onClose, accentColor = "#FF6B2B" }) => {
                   <div key={pref.key} style={{ marginBottom:"10px" }}>
                     <label style={{
                       fontSize    : "0.65rem",
-                      color       : "rgba(255,255,255,0.4)",
+                      color       : "rgba(255,255,255,0.35)",
                       display     : "block",
-                      marginBottom: "4px"
+                      marginBottom: "5px",
+                      letterSpacing: "0.04rem"
                     }}>
                       {pref.label}
                     </label>
@@ -417,7 +387,7 @@ const ResumePanel = ({ isOpen, onClose, accentColor = "#FF6B2B" }) => {
                         border      : "1px solid rgba(255,255,255,0.08)",
                         borderRadius: "8px",
                         color       : "#fff",
-                        fontSize    : "0.8rem",
+                        fontSize    : "0.82rem",
                         outline     : "none",
                         cursor      : "pointer"
                       }}
@@ -433,53 +403,51 @@ const ResumePanel = ({ isOpen, onClose, accentColor = "#FF6B2B" }) => {
                 ))}
               </div>
 
-              {/* Upload Button */}
-              <input
-                ref={fileRef}
-                type="file"
-                accept=".pdf"
-                onChange={handleUpload}
-                style={{ display:"none" }}
-              />
+              {/* Upload area */}
+              <input ref={fileRef} type="file" accept=".pdf"
+                onChange={handleUpload} style={{ display:"none" }} />
               <button
                 onClick={() => fileRef.current?.click()}
                 disabled={uploading}
                 style={{
-                  padding      : "20px",
+                  padding      : "24px 20px",
                   background   : uploading
                     ? "rgba(255,255,255,0.02)"
-                    : `${accentColor}12`,
+                    : `${accentColor}08`,
                   border       : `2px dashed ${uploading
-                    ? "rgba(255,255,255,0.1)"
-                    : accentColor + "50"}`,
-                  borderRadius : "12px",
+                    ? "rgba(255,255,255,0.08)"
+                    : accentColor + "40"}`,
+                  borderRadius : "14px",
                   cursor       : uploading ? "not-allowed" : "pointer",
                   display      : "flex",
                   flexDirection: "column",
                   alignItems   : "center",
-                  gap          : "8px",
-                  transition   : "all 0.2s",
-                  width        : "100%"
+                  gap          : "10px",
+                  width        : "100%",
+                  transition   : "all 0.2s"
                 }}
               >
                 {uploading ? (
                   <>
-                    <Loader size={24} color={accentColor}
+                    <Loader size={26} color={accentColor}
                       style={{ animation:"spin 1s linear infinite" }} />
-                    <span style={{ color:"rgba(255,255,255,0.5)",
-                      fontSize:"0.85rem" }}>
+                    <span style={{
+                      color:"rgba(255,255,255,0.4)", fontSize:"0.88rem"
+                    }}>
                       Analyzing your resume...
                     </span>
                   </>
                 ) : (
                   <>
-                    <Upload size={24} color={accentColor} />
-                    <span style={{ color:"#fff", fontSize:"0.88rem",
-                      fontWeight:"500" }}>
+                    <Upload size={26} color={accentColor} />
+                    <span style={{
+                      color:"#fff", fontSize:"0.92rem", fontWeight:"500"
+                    }}>
                       Upload Resume (PDF)
                     </span>
-                    <span style={{ color:"rgba(255,255,255,0.3)",
-                      fontSize:"0.72rem" }}>
+                    <span style={{
+                      color:"rgba(255,255,255,0.25)", fontSize:"0.75rem"
+                    }}>
                       Click to browse or drag & drop
                     </span>
                   </>
@@ -488,54 +456,43 @@ const ResumePanel = ({ isOpen, onClose, accentColor = "#FF6B2B" }) => {
             </div>
           )}
 
-          {/* ── ANALYSIS TAB ── */}
+          {/* ── ANALYSIS ── */}
           {activeTab === "analysis" && analysis && (
             <div style={{ display:"flex", flexDirection:"column", gap:"14px" }}>
-
-              {/* Score Card */}
-              <div style={{
-                ...glass,
-                padding   : "20px",
-                textAlign : "center"
-              }}>
+              {/* Score */}
+              <div style={{ ...glass, padding:"22px", textAlign:"center" }}>
                 <div style={{
-                  fontSize  : "3.5rem",
-                  fontWeight: "800",
-                  color     : scoreColor(analysis.score),
-                  lineHeight: 1
+                  fontSize:"3.8rem", fontWeight:"800",
+                  color:scoreColor(analysis.score), lineHeight:1
                 }}>
                   {analysis.score}
                 </div>
                 <div style={{
-                  fontSize : "0.75rem",
-                  color    : "rgba(255,255,255,0.4)",
-                  marginTop: "4px"
+                  fontSize:"0.75rem",
+                  color:"rgba(255,255,255,0.35)", marginTop:"6px"
                 }}>
                   Resume Score / 100
                 </div>
                 <div style={{
-                  width       : "100%",
-                  height      : "6px",
-                  background  : "rgba(255,255,255,0.08)",
-                  borderRadius: "3px",
-                  marginTop   : "12px",
-                  overflow    : "hidden"
+                  width:"100%", height:"6px",
+                  background:"rgba(255,255,255,0.07)",
+                  borderRadius:"3px", marginTop:"14px", overflow:"hidden"
                 }}>
                   <div style={{
-                    width       : `${analysis.score}%`,
-                    height      : "100%",
-                    background  : scoreColor(analysis.score),
-                    borderRadius: "3px",
-                    transition  : "width 1s ease"
+                    width:`${analysis.score}%`, height:"100%",
+                    background:scoreColor(analysis.score),
+                    borderRadius:"3px", transition:"width 1s ease"
                   }} />
                 </div>
               </div>
 
-              {/* Basic Info */}
+              {/* Info */}
               <div style={{ ...glass, padding:"14px" }}>
-                <p style={{ color:accentColor, fontSize:"0.68rem",
+                <p style={{
+                  color:accentColor, fontSize:"0.68rem",
                   letterSpacing:"0.1rem", marginBottom:"10px",
-                  fontWeight:"600" }}>
+                  fontWeight:"600", margin:"0 0 10px"
+                }}>
                   CANDIDATE INFO
                 </p>
                 {[
@@ -545,17 +502,18 @@ const ResumePanel = ({ isOpen, onClose, accentColor = "#FF6B2B" }) => {
                   { label:"Education",  value: analysis.education }
                 ].map(item => (
                   <div key={item.label} style={{
-                    display        : "flex",
-                    justifyContent : "space-between",
-                    padding        : "6px 0",
-                    borderBottom   : "1px solid rgba(255,255,255,0.04)"
+                    display:"flex", justifyContent:"space-between",
+                    padding:"7px 0",
+                    borderBottom:"1px solid rgba(255,255,255,0.04)"
                   }}>
-                    <span style={{ fontSize:"0.75rem",
-                      color:"rgba(255,255,255,0.35)" }}>
+                    <span style={{
+                      fontSize:"0.75rem", color:"rgba(255,255,255,0.3)"
+                    }}>
                       {item.label}
                     </span>
-                    <span style={{ fontSize:"0.75rem", color:"#fff",
-                      fontWeight:"500" }}>
+                    <span style={{
+                      fontSize:"0.78rem", color:"#fff", fontWeight:"500"
+                    }}>
                       {item.value}
                     </span>
                   </div>
@@ -564,20 +522,21 @@ const ResumePanel = ({ isOpen, onClose, accentColor = "#FF6B2B" }) => {
 
               {/* Skills */}
               <div style={{ ...glass, padding:"14px" }}>
-                <p style={{ color:accentColor, fontSize:"0.68rem",
+                <p style={{
+                  color:accentColor, fontSize:"0.68rem",
                   letterSpacing:"0.1rem", marginBottom:"10px",
-                  fontWeight:"600" }}>
+                  fontWeight:"600", margin:"0 0 10px"
+                }}>
                   SKILLS DETECTED
                 </p>
                 <div style={{ display:"flex", flexWrap:"wrap", gap:"6px" }}>
                   {analysis.skills?.map((skill, i) => (
                     <span key={i} style={{
-                      padding     : "3px 10px",
-                      background  : "rgba(255,255,255,0.06)",
-                      border      : "1px solid rgba(255,255,255,0.08)",
-                      borderRadius: "20px",
-                      fontSize    : "0.7rem",
-                      color       : "#ccc"
+                      padding:"3px 10px",
+                      background:"rgba(255,255,255,0.06)",
+                      border:"1px solid rgba(255,255,255,0.08)",
+                      borderRadius:"20px",
+                      fontSize:"0.72rem", color:"#ccc"
                     }}>
                       {skill}
                     </span>
@@ -587,18 +546,23 @@ const ResumePanel = ({ isOpen, onClose, accentColor = "#FF6B2B" }) => {
 
               {/* Strengths */}
               <div style={{ ...glass, padding:"14px" }}>
-                <p style={{ color:"#22c55e", fontSize:"0.68rem",
+                <p style={{
+                  color:"#22c55e", fontSize:"0.68rem",
                   letterSpacing:"0.1rem", marginBottom:"10px",
-                  fontWeight:"600" }}>
+                  fontWeight:"600", margin:"0 0 10px"
+                }}>
                   ✅ STRENGTHS
                 </p>
                 {analysis.strengths?.map((s, i) => (
-                  <div key={i} style={{ display:"flex", gap:"8px",
-                    marginBottom:"6px", alignItems:"flex-start" }}>
+                  <div key={i} style={{
+                    display:"flex", gap:"8px",
+                    marginBottom:"7px", alignItems:"flex-start"
+                  }}>
                     <CheckCircle size={13} color="#22c55e"
                       style={{ flexShrink:0, marginTop:"1px" }} />
-                    <span style={{ fontSize:"0.78rem",
-                      color:"rgba(255,255,255,0.7)" }}>
+                    <span style={{
+                      fontSize:"0.8rem", color:"rgba(255,255,255,0.72)"
+                    }}>
                       {s}
                     </span>
                   </div>
@@ -607,41 +571,47 @@ const ResumePanel = ({ isOpen, onClose, accentColor = "#FF6B2B" }) => {
 
               {/* Weaknesses */}
               <div style={{ ...glass, padding:"14px" }}>
-                <p style={{ color:"#ef4444", fontSize:"0.68rem",
+                <p style={{
+                  color:"#ef4444", fontSize:"0.68rem",
                   letterSpacing:"0.1rem", marginBottom:"10px",
-                  fontWeight:"600" }}>
+                  fontWeight:"600", margin:"0 0 10px"
+                }}>
                   ⚠️ NEEDS IMPROVEMENT
                 </p>
                 {analysis.weaknesses?.map((w, i) => (
-                  <div key={i} style={{ display:"flex", gap:"8px",
-                    marginBottom:"6px", alignItems:"flex-start" }}>
+                  <div key={i} style={{
+                    display:"flex", gap:"8px",
+                    marginBottom:"7px", alignItems:"flex-start"
+                  }}>
                     <AlertCircle size={13} color="#ef4444"
                       style={{ flexShrink:0, marginTop:"1px" }} />
-                    <span style={{ fontSize:"0.78rem",
-                      color:"rgba(255,255,255,0.7)" }}>
+                    <span style={{
+                      fontSize:"0.8rem", color:"rgba(255,255,255,0.72)"
+                    }}>
                       {w}
                     </span>
                   </div>
                 ))}
               </div>
 
-              {/* Missing Keywords */}
+              {/* Keywords */}
               {analysis.missing_keywords?.length > 0 && (
                 <div style={{ ...glass, padding:"14px" }}>
-                  <p style={{ color:"#f59e0b", fontSize:"0.68rem",
+                  <p style={{
+                    color:"#f59e0b", fontSize:"0.68rem",
                     letterSpacing:"0.1rem", marginBottom:"10px",
-                    fontWeight:"600" }}>
+                    fontWeight:"600", margin:"0 0 10px"
+                  }}>
                     🔑 MISSING KEYWORDS
                   </p>
                   <div style={{ display:"flex", flexWrap:"wrap", gap:"6px" }}>
                     {analysis.missing_keywords?.map((kw, i) => (
                       <span key={i} style={{
-                        padding     : "3px 10px",
-                        background  : "rgba(245,158,11,0.1)",
-                        border      : "1px solid rgba(245,158,11,0.25)",
-                        borderRadius: "20px",
-                        fontSize    : "0.7rem",
-                        color       : "#f59e0b"
+                        padding:"3px 10px",
+                        background:"rgba(245,158,11,0.1)",
+                        border:"1px solid rgba(245,158,11,0.2)",
+                        borderRadius:"20px",
+                        fontSize:"0.72rem", color:"#f59e0b"
                       }}>
                         {kw}
                       </span>
@@ -652,28 +622,32 @@ const ResumePanel = ({ isOpen, onClose, accentColor = "#FF6B2B" }) => {
 
               {/* Feedback */}
               <div style={{ ...glass, padding:"14px" }}>
-                <p style={{ color:accentColor, fontSize:"0.68rem",
+                <p style={{
+                  color:accentColor, fontSize:"0.68rem",
                   letterSpacing:"0.1rem", marginBottom:"8px",
-                  fontWeight:"600" }}>
+                  fontWeight:"600", margin:"0 0 8px"
+                }}>
                   AI FEEDBACK
                 </p>
-                <p style={{ fontSize:"0.8rem",
-                  color:"rgba(255,255,255,0.6)", lineHeight:"1.6" }}>
+                <p style={{
+                  fontSize:"0.82rem",
+                  color:"rgba(255,255,255,0.6)", lineHeight:"1.65"
+                }}>
                   {analysis.overall_feedback}
                 </p>
               </div>
 
-              {/* Action Buttons */}
+              {/* Actions */}
               <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
                 <button onClick={handleImprove}
                   disabled={loading === "improve"}
                   style={{
-                    padding      : "12px",
+                    padding      : "13px",
                     background   : `linear-gradient(135deg, ${accentColor}, #ff9a6b)`,
                     border       : "none",
                     borderRadius : "10px",
                     color        : "#fff",
-                    fontSize     : "0.82rem",
+                    fontSize     : "0.85rem",
                     fontWeight   : "600",
                     cursor       : "pointer",
                     display      : "flex",
@@ -685,26 +659,20 @@ const ResumePanel = ({ isOpen, onClose, accentColor = "#FF6B2B" }) => {
                     ? <><Loader size={14}
                         style={{ animation:"spin 1s linear infinite" }} />
                       Improving...</>
-                    : <><TrendingUp size={14} />
-                      Improve My Resume</>
+                    : <><TrendingUp size={14} />Improve My Resume</>
                   }
                 </button>
                 <div style={{ display:"flex", gap:"8px" }}>
                   <button onClick={handleGetJobs}
                     disabled={loading === "jobs"}
                     style={{
-                      flex        : 1,
-                      padding     : "10px",
-                      background  : "rgba(255,255,255,0.05)",
-                      border      : "1px solid rgba(255,255,255,0.1)",
-                      borderRadius: "10px",
-                      color       : "#fff",
-                      fontSize    : "0.78rem",
-                      cursor      : "pointer",
-                      display     : "flex",
-                      alignItems  : "center",
-                      justifyContent: "center",
-                      gap         : "6px"
+                      flex:"1", padding:"10px",
+                      background:"rgba(255,255,255,0.05)",
+                      border:"1px solid rgba(255,255,255,0.09)",
+                      borderRadius:"10px", color:"#fff",
+                      fontSize:"0.8rem", cursor:"pointer",
+                      display:"flex", alignItems:"center",
+                      justifyContent:"center", gap:"6px"
                     }}>
                     {loading === "jobs"
                       ? <Loader size={13}
@@ -716,18 +684,13 @@ const ResumePanel = ({ isOpen, onClose, accentColor = "#FF6B2B" }) => {
                   <button onClick={handleSkillsGap}
                     disabled={loading === "skills"}
                     style={{
-                      flex        : 1,
-                      padding     : "10px",
-                      background  : "rgba(255,255,255,0.05)",
-                      border      : "1px solid rgba(255,255,255,0.1)",
-                      borderRadius: "10px",
-                      color       : "#fff",
-                      fontSize    : "0.78rem",
-                      cursor      : "pointer",
-                      display     : "flex",
-                      alignItems  : "center",
-                      justifyContent: "center",
-                      gap         : "6px"
+                      flex:"1", padding:"10px",
+                      background:"rgba(255,255,255,0.05)",
+                      border:"1px solid rgba(255,255,255,0.09)",
+                      borderRadius:"10px", color:"#fff",
+                      fontSize:"0.8rem", cursor:"pointer",
+                      display:"flex", alignItems:"center",
+                      justifyContent:"center", gap:"6px"
                     }}>
                     {loading === "skills"
                       ? <Loader size={13}
@@ -740,17 +703,13 @@ const ResumePanel = ({ isOpen, onClose, accentColor = "#FF6B2B" }) => {
                 <button onClick={handleSalary}
                   disabled={loading === "salary"}
                   style={{
-                    padding      : "10px",
-                    background   : "rgba(255,255,255,0.05)",
-                    border       : "1px solid rgba(255,255,255,0.1)",
-                    borderRadius : "10px",
-                    color        : "#fff",
-                    fontSize     : "0.78rem",
-                    cursor       : "pointer",
-                    display      : "flex",
-                    alignItems   : "center",
-                    justifyContent: "center",
-                    gap          : "6px"
+                    padding:"10px",
+                    background:"rgba(255,255,255,0.05)",
+                    border:"1px solid rgba(255,255,255,0.09)",
+                    borderRadius:"10px", color:"#fff",
+                    fontSize:"0.8rem", cursor:"pointer",
+                    display:"flex", alignItems:"center",
+                    justifyContent:"center", gap:"6px"
                   }}>
                   {loading === "salary"
                     ? <Loader size={13}
@@ -763,44 +722,49 @@ const ResumePanel = ({ isOpen, onClose, accentColor = "#FF6B2B" }) => {
             </div>
           )}
 
-          {/* ── IMPROVED TAB ── */}
+          {/* ── IMPROVED ── */}
           {activeTab === "improved" && improved && (
             <div style={{ display:"flex", flexDirection:"column", gap:"14px" }}>
               {/* Score comparison */}
               <div style={{
-                ...glass, padding:"16px",
+                ...glass, padding:"18px",
                 display:"flex", justifyContent:"space-around",
                 alignItems:"center"
               }}>
                 <div style={{ textAlign:"center" }}>
-                  <div style={{ fontSize:"2rem", fontWeight:"700",
-                    color: scoreColor(analysis?.score || 0) }}>
+                  <div style={{
+                    fontSize:"2.2rem", fontWeight:"800",
+                    color:scoreColor(analysis?.score || 0)
+                  }}>
                     {analysis?.score || 0}
                   </div>
-                  <div style={{ fontSize:"0.65rem",
-                    color:"rgba(255,255,255,0.35)" }}>
+                  <div style={{
+                    fontSize:"0.65rem", color:"rgba(255,255,255,0.3)"
+                  }}>
                     Before
                   </div>
                 </div>
                 <ChevronRight size={20} color={accentColor} />
                 <div style={{ textAlign:"center" }}>
-                  <div style={{ fontSize:"2rem", fontWeight:"700",
-                    color: scoreColor(improved.new_score) }}>
+                  <div style={{
+                    fontSize:"2.2rem", fontWeight:"800",
+                    color:scoreColor(improved.new_score)
+                  }}>
                     {improved.new_score}
                   </div>
-                  <div style={{ fontSize:"0.65rem",
-                    color:"rgba(255,255,255,0.35)" }}>
+                  <div style={{
+                    fontSize:"0.65rem", color:"rgba(255,255,255,0.3)"
+                  }}>
                     After
                   </div>
                 </div>
                 <div style={{
-                  padding     : "4px 10px",
-                  background  : "rgba(34,197,94,0.1)",
-                  border      : "1px solid rgba(34,197,94,0.25)",
-                  borderRadius: "20px",
-                  color       : "#22c55e",
-                  fontSize    : "0.75rem",
-                  fontWeight  : "600"
+                  padding:"5px 12px",
+                  background:"rgba(34,197,94,0.1)",
+                  border:"1px solid rgba(34,197,94,0.25)",
+                  borderRadius:"20px",
+                  color:"#22c55e",
+                  fontSize:"0.78rem", fontWeight:"700"
                 }}>
                   +{improved.new_score - (analysis?.score || 0)} pts
                 </div>
@@ -808,77 +772,81 @@ const ResumePanel = ({ isOpen, onClose, accentColor = "#FF6B2B" }) => {
 
               {/* Summary */}
               <div style={{ ...glass, padding:"14px" }}>
-                <p style={{ color:accentColor, fontSize:"0.68rem",
+                <p style={{
+                  color:accentColor, fontSize:"0.68rem",
                   letterSpacing:"0.1rem", marginBottom:"8px",
-                  fontWeight:"600" }}>
+                  fontWeight:"600", margin:"0 0 8px"
+                }}>
                   IMPROVEMENT SUMMARY
                 </p>
-                <p style={{ fontSize:"0.8rem",
-                  color:"rgba(255,255,255,0.6)", lineHeight:"1.6" }}>
+                <p style={{
+                  fontSize:"0.82rem",
+                  color:"rgba(255,255,255,0.6)", lineHeight:"1.65"
+                }}>
                   {improved.improvement_summary}
                 </p>
               </div>
 
               {/* Changes */}
               <div style={{ ...glass, padding:"14px" }}>
-                <p style={{ color:accentColor, fontSize:"0.68rem",
+                <p style={{
+                  color:accentColor, fontSize:"0.68rem",
                   letterSpacing:"0.1rem", marginBottom:"12px",
-                  fontWeight:"600" }}>
+                  fontWeight:"600", margin:"0 0 12px"
+                }}>
                   CHANGES MADE
                 </p>
                 {improved.changes_made?.map((change, i) => (
                   <div key={i} style={{
-                    marginBottom : "12px",
-                    paddingBottom: "12px",
-                    borderBottom : "1px solid rgba(255,255,255,0.04)"
+                    marginBottom:"12px", paddingBottom:"12px",
+                    borderBottom:"1px solid rgba(255,255,255,0.04)"
                   }}>
                     <div style={{
-                      padding     : "6px 10px",
-                      background  : "rgba(239,68,68,0.08)",
-                      border      : "1px solid rgba(239,68,68,0.15)",
-                      borderRadius: "6px",
-                      fontSize    : "0.72rem",
-                      color       : "#ef4444",
-                      marginBottom: "6px",
-                      textDecoration: "line-through"
+                      padding:"6px 10px",
+                      background:"rgba(239,68,68,0.08)",
+                      border:"1px solid rgba(239,68,68,0.15)",
+                      borderRadius:"6px", fontSize:"0.72rem",
+                      color:"#ef4444", marginBottom:"6px",
+                      textDecoration:"line-through"
                     }}>
                       {change.original}
                     </div>
                     <div style={{
-                      padding     : "6px 10px",
-                      background  : "rgba(34,197,94,0.08)",
-                      border      : "1px solid rgba(34,197,94,0.15)",
-                      borderRadius: "6px",
-                      fontSize    : "0.72rem",
-                      color       : "#22c55e",
-                      marginBottom: "4px"
+                      padding:"6px 10px",
+                      background:"rgba(34,197,94,0.08)",
+                      border:"1px solid rgba(34,197,94,0.15)",
+                      borderRadius:"6px", fontSize:"0.72rem",
+                      color:"#22c55e", marginBottom:"4px"
                     }}>
                       {change.improved}
                     </div>
-                    <p style={{ fontSize:"0.65rem",
-                      color:"rgba(255,255,255,0.25)", marginLeft:"4px" }}>
+                    <p style={{
+                      fontSize:"0.65rem",
+                      color:"rgba(255,255,255,0.2)", marginLeft:"4px"
+                    }}>
                       {change.reason}
                     </p>
                   </div>
                 ))}
               </div>
 
-              {/* Keywords Added */}
+              {/* Keywords */}
               <div style={{ ...glass, padding:"14px" }}>
-                <p style={{ color:"#22c55e", fontSize:"0.68rem",
+                <p style={{
+                  color:"#22c55e", fontSize:"0.68rem",
                   letterSpacing:"0.1rem", marginBottom:"10px",
-                  fontWeight:"600" }}>
+                  fontWeight:"600", margin:"0 0 10px"
+                }}>
                   KEYWORDS ADDED
                 </p>
                 <div style={{ display:"flex", flexWrap:"wrap", gap:"6px" }}>
                   {improved.keywords_added?.map((kw, i) => (
                     <span key={i} style={{
-                      padding     : "3px 10px",
-                      background  : "rgba(34,197,94,0.1)",
-                      border      : "1px solid rgba(34,197,94,0.2)",
-                      borderRadius: "20px",
-                      fontSize    : "0.7rem",
-                      color       : "#22c55e"
+                      padding:"3px 10px",
+                      background:"rgba(34,197,94,0.1)",
+                      border:"1px solid rgba(34,197,94,0.2)",
+                      borderRadius:"20px",
+                      fontSize:"0.72rem", color:"#22c55e"
                     }}>
                       ✓ {kw}
                     </span>
@@ -886,155 +854,190 @@ const ResumePanel = ({ isOpen, onClose, accentColor = "#FF6B2B" }) => {
                 </div>
               </div>
 
-{/* Download Buttons */}
-<div style={{ display:"flex", gap:"8px" }}>
-  <button
-    onClick={async () => {
-      const token = localStorage.getItem("friday_token");
-      const res   = await fetch(
-        `${API}/api/resume/download-improved`,
-        { headers: { Authorization: `Bearer ${token}` }}
-      );
-      const blob = await res.blob();
-      const url  = URL.createObjectURL(blob);
-      const a    = document.createElement("a");
-      a.href     = url;
-      a.download = "improved_resume.pdf";
-      a.click();
-      URL.revokeObjectURL(url);
-    }}
-    style={{
-      flex         : 1,
-      padding      : "12px",
-      background   : `linear-gradient(135deg, ${accentColor}, #ff9a6b)`,
-      border       : "none",
-      borderRadius : "10px",
-      color        : "#fff",
-      fontSize     : "0.82rem",
-      fontWeight   : "600",
-      cursor       : "pointer",
-      display      : "flex",
-      alignItems   : "center",
-      justifyContent: "center",
-      gap          : "8px"
-    }}>
-    <Download size={14} />
-    Download PDF
-  </button>
-
-  <button
-    onClick={() => {
-      navigator.clipboard.writeText(
-        improved.improved_resume
-      );
-      alert("Copied to clipboard!");
-    }}
-    style={{
-      padding      : "12px 16px",
-      background   : "rgba(255,255,255,0.05)",
-      border       : "1px solid rgba(255,255,255,0.1)",
-      borderRadius : "10px",
-      color        : "#ccc",
-      fontSize     : "0.82rem",
-      cursor       : "pointer",
-      display      : "flex",
-      alignItems   : "center",
-      gap          : "8px"
-    }}>
-    Copy Text
-  </button>
-</div>
+              {/* Download */}
+              <div style={{ display:"flex", gap:"8px" }}>
+                <button
+                  onClick={async () => {
+                    const token = localStorage.getItem("friday_token");
+                    const res   = await fetch(
+                      `${API}/api/resume/download-improved`,
+                      { headers: { Authorization: `Bearer ${token}` }}
+                    );
+                    const blob = await res.blob();
+                    const url  = URL.createObjectURL(blob);
+                    const a    = document.createElement("a");
+                    a.href     = url;
+                    a.download = "improved_resume.pdf";
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  }}
+                  style={{
+                    flex:"1", padding:"12px",
+                    background:`linear-gradient(135deg, ${accentColor}, #ff9a6b)`,
+                    border:"none", borderRadius:"10px",
+                    color:"#fff", fontSize:"0.85rem", fontWeight:"600",
+                    cursor:"pointer", display:"flex",
+                    alignItems:"center", justifyContent:"center", gap:"8px"
+                  }}>
+                  <Download size={14} />
+                  Download PDF
+                </button>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(improved.improved_resume);
+                    alert("Copied to clipboard!");
+                  }}
+                  style={{
+                    padding:"12px 16px",
+                    background:"rgba(255,255,255,0.05)",
+                    border:"1px solid rgba(255,255,255,0.1)",
+                    borderRadius:"10px", color:"#ccc",
+                    fontSize:"0.85rem", cursor:"pointer",
+                    display:"flex", alignItems:"center", gap:"8px"
+                  }}>
+                  Copy Text
+                </button>
+              </div>
             </div>
           )}
 
-          {/* ── JOBS TAB ── */}
+          {/* ── JOBS ── */}
           {activeTab === "jobs" && (
             <div style={{ display:"flex", flexDirection:"column", gap:"12px" }}>
+
+              {/* ── LIVE BADGE ── */}
+              {jobs.length > 0 && (
+                <div style={{
+                  display    : "flex",
+                  alignItems : "center",
+                  gap        : "8px",
+                  padding    : "8px 14px",
+                  background : jobSource === "live"
+                    ? "rgba(34,197,94,0.08)"
+                    : "rgba(99,102,241,0.08)",
+                  border     : jobSource === "live"
+                    ? "1px solid rgba(34,197,94,0.15)"
+                    : "1px solid rgba(99,102,241,0.15)",
+                  borderRadius: "10px"
+                }}>
+                  <div style={{
+                    width       : "7px",
+                    height      : "7px",
+                    borderRadius: "50%",
+                    background  : jobSource === "live"
+                      ? "#22c55e" : "#818cf8",
+                    boxShadow   : jobSource === "live"
+                      ? "0 0 8px #22c55e"
+                      : "0 0 8px #818cf8",
+                    animation   : "pulse 2s infinite"
+                  }} />
+                  <span style={{
+                    fontSize : "0.78rem",
+                    color    : jobSource === "live"
+                      ? "#22c55e" : "#818cf8",
+                    fontWeight: "500"
+                  }}>
+                    {jobSource === "live"
+                      ? "Live jobs from Indeed & LinkedIn"
+                      : "AI matched jobs"}
+                  </span>
+                  <span style={{
+                    fontSize  : "0.68rem",
+                    color     : "rgba(255,255,255,0.2)",
+                    marginLeft: "auto"
+                  }}>
+                    {jobs.length} found
+                  </span>
+                </div>
+              )}
+
               {jobs.length === 0 ? (
                 <div style={{ textAlign:"center", padding:"40px 20px" }}>
-                  <Briefcase size={40} color="rgba(255,255,255,0.1)"
-                    style={{ margin:"0 auto 12px" }} />
-                  <p style={{ color:"rgba(255,255,255,0.3)",
-                    fontSize:"0.85rem" }}>
+                  <Briefcase size={40} color="rgba(255,255,255,0.08)"
+                    style={{ margin:"0 auto 12px", display:"block" }} />
+                  <p style={{
+                    color:"rgba(255,255,255,0.3)", fontSize:"0.88rem"
+                  }}>
                     No jobs loaded yet
                   </p>
                   <button onClick={handleGetJobs} style={{
-                    marginTop   : "12px",
-                    padding     : "10px 20px",
-                    background  : `${accentColor}20`,
-                    border      : `1px solid ${accentColor}40`,
-                    borderRadius: "8px",
-                    color       : accentColor,
-                    cursor      : "pointer",
-                    fontSize    : "0.8rem"
+                    marginTop:"14px", padding:"10px 22px",
+                    background:`${accentColor}18`,
+                    border:`1px solid ${accentColor}35`,
+                    borderRadius:"8px", color:accentColor,
+                    cursor:"pointer", fontSize:"0.82rem"
                   }}>
-                    Find Matching Jobs
+                    {loading === "jobs"
+                      ? "Finding jobs..."
+                      : "Find Matching Jobs"}
                   </button>
                 </div>
               ) : (
                 jobs.map((job, i) => (
                   <div key={i} style={{
-                    ...glass,
-                    padding   : "14px",
-                    cursor    : "pointer",
-                    transition: "all 0.2s"
+                    ...glass, padding:"14px", cursor:"pointer",
+                    transition:"all 0.2s"
                   }}
                   onMouseEnter={e => {
-                    e.currentTarget.style.borderColor =
-                      `${accentColor}30`;
-                    e.currentTarget.style.background =
-                      "rgba(255,255,255,0.06)";
+                    e.currentTarget.style.borderColor = `${accentColor}30`;
+                    e.currentTarget.style.background  = "rgba(255,255,255,0.06)";
                   }}
                   onMouseLeave={e => {
-                    e.currentTarget.style.borderColor =
-                      "rgba(255,255,255,0.08)";
-                    e.currentTarget.style.background =
-                      "rgba(255,255,255,0.04)";
+                    e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)";
+                    e.currentTarget.style.background  = "rgba(255,255,255,0.04)";
                   }}>
-                    {/* Job Header */}
-                    <div style={{ display:"flex",
-                      justifyContent:"space-between",
-                      alignItems:"flex-start", marginBottom:"8px" }}>
-                      <div>
-                        <p style={{ fontSize:"0.88rem", fontWeight:"600",
-                          color:"#fff", marginBottom:"2px" }}>
+                    {/* Job header */}
+                    <div style={{
+                      display:"flex", justifyContent:"space-between",
+                      alignItems:"flex-start", marginBottom:"8px"
+                    }}>
+                      <div style={{ flex:1, marginRight:"8px" }}>
+                        <p style={{
+                          fontSize:"0.9rem", fontWeight:"600",
+                          color:"#fff", marginBottom:"2px", margin:"0 0 2px"
+                        }}>
                           {job.title}
                         </p>
-                        <p style={{ fontSize:"0.75rem",
-                          color:"rgba(255,255,255,0.5)" }}>
+                        <p style={{
+                          fontSize:"0.75rem",
+                          color:"rgba(255,255,255,0.45)", margin:0
+                        }}>
                           {job.company}
                         </p>
                       </div>
                       <div style={{
-                        padding     : "4px 10px",
-                        background  : `${scoreColor(job.match_percentage)}18`,
-                        border      : `1px solid ${scoreColor(job.match_percentage)}35`,
-                        borderRadius: "20px",
-                        color       : scoreColor(job.match_percentage),
-                        fontSize    : "0.72rem",
-                        fontWeight  : "700",
-                        flexShrink  : 0
+                        padding:"4px 10px",
+                        background:`${scoreColor(job.match_percentage)}15`,
+                        border:`1px solid ${scoreColor(job.match_percentage)}30`,
+                        borderRadius:"20px",
+                        color:scoreColor(job.match_percentage),
+                        fontSize:"0.72rem", fontWeight:"700",
+                        flexShrink:0
                       }}>
                         {job.match_percentage}% match
                       </div>
                     </div>
 
-                    {/* Job Details */}
-                    <div style={{ display:"flex", gap:"12px",
-                      marginBottom:"8px", flexWrap:"wrap" }}>
+                    {/* Details */}
+                    <div style={{
+                      display:"flex", gap:"12px",
+                      marginBottom:"8px", flexWrap:"wrap"
+                    }}>
                       {[
-                        { icon: MapPin,   text: job.location },
-                        { icon: DollarSign, text: job.salary },
-                        { icon: Clock,    text: job.posted }
+                        { icon:MapPin,     text:job.location },
+                        { icon:DollarSign, text:job.salary   },
+                        { icon:Clock,      text:job.posted   }
                       ].map((item, j) => {
                         const Icon = item.icon;
                         return (
-                          <div key={j} style={{ display:"flex",
-                            alignItems:"center", gap:"4px" }}>
-                            <Icon size={11}
-                              color="rgba(255,255,255,0.3)" />
-                            <span style={{ fontSize:"0.68rem",
-                              color:"rgba(255,255,255,0.4)" }}>
+                          <div key={j} style={{
+                            display:"flex", alignItems:"center", gap:"4px"
+                          }}>
+                            <Icon size={11} color="rgba(255,255,255,0.25)" />
+                            <span style={{
+                              fontSize:"0.68rem",
+                              color:"rgba(255,255,255,0.38)"
+                            }}>
                               {item.text}
                             </span>
                           </div>
@@ -1042,75 +1045,59 @@ const ResumePanel = ({ isOpen, onClose, accentColor = "#FF6B2B" }) => {
                       })}
                     </div>
 
-                    {/* Match Reasons */}
-                    <div style={{ display:"flex", flexWrap:"wrap",
-                      gap:"4px", marginBottom:"10px" }}>
+                    {/* Match reasons */}
+                    <div style={{
+                      display:"flex", flexWrap:"wrap",
+                      gap:"4px", marginBottom:"10px"
+                    }}>
                       {job.match_reasons?.map((r, j) => (
                         <span key={j} style={{
-                          padding     : "2px 8px",
-                          background  : "rgba(34,197,94,0.08)",
-                          border      : "1px solid rgba(34,197,94,0.15)",
-                          borderRadius: "4px",
-                          fontSize    : "0.62rem",
-                          color       : "#22c55e"
+                          padding:"2px 8px",
+                          background:"rgba(34,197,94,0.08)",
+                          border:"1px solid rgba(34,197,94,0.15)",
+                          borderRadius:"4px",
+                          fontSize:"0.62rem", color:"#22c55e"
                         }}>
                           ✓ {r}
                         </span>
                       ))}
                     </div>
 
-                    {/* Action Buttons */}
+                    {/* Buttons */}
                     <div style={{ display:"flex", gap:"6px" }}>
                       <a href={job.apply_url} target="_blank"
                         rel="noreferrer" style={{
-                          flex        : 1,
-                          padding     : "8px",
-                          background  : `linear-gradient(135deg, ${accentColor}, #ff9a6b)`,
-                          border      : "none",
-                          borderRadius: "8px",
-                          color       : "#fff",
-                          fontSize    : "0.72rem",
-                          fontWeight  : "600",
-                          cursor      : "pointer",
-                          display     : "flex",
-                          alignItems  : "center",
-                          justifyContent: "center",
-                          gap         : "4px",
-                          textDecoration: "none"
+                          flex:"1", padding:"8px",
+                          background:`linear-gradient(135deg, ${accentColor}, #ff9a6b)`,
+                          border:"none", borderRadius:"8px",
+                          color:"#fff", fontSize:"0.72rem", fontWeight:"600",
+                          cursor:"pointer", display:"flex",
+                          alignItems:"center", justifyContent:"center",
+                          gap:"4px", textDecoration:"none"
                         }}>
                         <ExternalLink size={11} />
                         Apply Now
                       </a>
-                      <button
-                        onClick={() => handleCoverLetter(job)}
+                      <button onClick={() => handleCoverLetter(job)}
                         style={{
-                          padding     : "8px 10px",
-                          background  : "rgba(255,255,255,0.05)",
-                          border      : "1px solid rgba(255,255,255,0.1)",
-                          borderRadius: "8px",
-                          color       : "#ccc",
-                          fontSize    : "0.68rem",
-                          cursor      : "pointer",
-                          display     : "flex",
-                          alignItems  : "center",
-                          gap         : "4px"
+                          padding:"8px 10px",
+                          background:"rgba(255,255,255,0.05)",
+                          border:"1px solid rgba(255,255,255,0.09)",
+                          borderRadius:"8px", color:"#ccc",
+                          fontSize:"0.68rem", cursor:"pointer",
+                          display:"flex", alignItems:"center", gap:"4px"
                         }}>
                         <FileText size={11} />
                         Cover Letter
                       </button>
-                      <button
-                        onClick={() => handleInterviewPrep(job)}
+                      <button onClick={() => handleInterviewPrep(job)}
                         style={{
-                          padding     : "8px 10px",
-                          background  : "rgba(255,255,255,0.05)",
-                          border      : "1px solid rgba(255,255,255,0.1)",
-                          borderRadius: "8px",
-                          color       : "#ccc",
-                          fontSize    : "0.68rem",
-                          cursor      : "pointer",
-                          display     : "flex",
-                          alignItems  : "center",
-                          gap         : "4px"
+                          padding:"8px 10px",
+                          background:"rgba(255,255,255,0.05)",
+                          border:"1px solid rgba(255,255,255,0.09)",
+                          borderRadius:"8px", color:"#ccc",
+                          fontSize:"0.68rem", cursor:"pointer",
+                          display:"flex", alignItems:"center", gap:"4px"
                         }}>
                         <MessageSquare size={11} />
                         Prep
@@ -1122,41 +1109,43 @@ const ResumePanel = ({ isOpen, onClose, accentColor = "#FF6B2B" }) => {
             </div>
           )}
 
-          {/* ── SKILLS GAP TAB ── */}
+          {/* ── SKILLS ── */}
           {activeTab === "skills" && skillsGap && (
             <div style={{ display:"flex", flexDirection:"column", gap:"14px" }}>
-              {/* Critical Missing */}
               <div style={{ ...glass, padding:"14px" }}>
-                <p style={{ color:"#ef4444", fontSize:"0.68rem",
+                <p style={{
+                  color:"#ef4444", fontSize:"0.68rem",
                   letterSpacing:"0.1rem", marginBottom:"12px",
-                  fontWeight:"600" }}>
+                  fontWeight:"600", margin:"0 0 12px"
+                }}>
                   🔴 CRITICAL SKILLS MISSING
                 </p>
                 {skillsGap.missing_critical?.map((skill, i) => (
                   <div key={i} style={{
-                    padding     : "10px",
-                    background  : "rgba(239,68,68,0.06)",
-                    border      : "1px solid rgba(239,68,68,0.12)",
-                    borderRadius: "8px",
-                    marginBottom: "8px"
+                    padding:"10px",
+                    background:"rgba(239,68,68,0.06)",
+                    border:"1px solid rgba(239,68,68,0.12)",
+                    borderRadius:"8px", marginBottom:"8px"
                   }}>
-                    <div style={{ display:"flex",
-                      justifyContent:"space-between",
-                      marginBottom:"4px" }}>
-                      <span style={{ fontSize:"0.82rem",
-                        fontWeight:"600", color:"#fff" }}>
+                    <div style={{
+                      display:"flex", justifyContent:"space-between",
+                      marginBottom:"4px"
+                    }}>
+                      <span style={{
+                        fontSize:"0.84rem", fontWeight:"600", color:"#fff"
+                      }}>
                         {skill.skill}
                       </span>
-                      <span style={{ fontSize:"0.68rem",
-                        color:"rgba(255,255,255,0.35)" }}>
+                      <span style={{
+                        fontSize:"0.68rem", color:"rgba(255,255,255,0.3)"
+                      }}>
                         {skill.learn_time}
                       </span>
                     </div>
                     <a href={skill.resource} target="_blank"
                       rel="noreferrer" style={{
-                        fontSize       : "0.68rem",
-                        color          : accentColor,
-                        textDecoration : "none"
+                        fontSize:"0.7rem", color:accentColor,
+                        textDecoration:"none"
                       }}>
                       Learn for free →
                     </a>
@@ -1164,38 +1153,40 @@ const ResumePanel = ({ isOpen, onClose, accentColor = "#FF6B2B" }) => {
                 ))}
               </div>
 
-              {/* Nice to Have */}
               <div style={{ ...glass, padding:"14px" }}>
-                <p style={{ color:"#f59e0b", fontSize:"0.68rem",
+                <p style={{
+                  color:"#f59e0b", fontSize:"0.68rem",
                   letterSpacing:"0.1rem", marginBottom:"12px",
-                  fontWeight:"600" }}>
+                  fontWeight:"600", margin:"0 0 12px"
+                }}>
                   🟡 NICE TO HAVE
                 </p>
                 {skillsGap.missing_nice_to_have?.map((skill, i) => (
                   <div key={i} style={{
-                    padding     : "10px",
-                    background  : "rgba(245,158,11,0.06)",
-                    border      : "1px solid rgba(245,158,11,0.12)",
-                    borderRadius: "8px",
-                    marginBottom: "8px"
+                    padding:"10px",
+                    background:"rgba(245,158,11,0.06)",
+                    border:"1px solid rgba(245,158,11,0.12)",
+                    borderRadius:"8px", marginBottom:"8px"
                   }}>
-                    <div style={{ display:"flex",
-                      justifyContent:"space-between",
-                      marginBottom:"4px" }}>
-                      <span style={{ fontSize:"0.82rem",
-                        fontWeight:"500", color:"#fff" }}>
+                    <div style={{
+                      display:"flex", justifyContent:"space-between",
+                      marginBottom:"4px"
+                    }}>
+                      <span style={{
+                        fontSize:"0.84rem", fontWeight:"500", color:"#fff"
+                      }}>
                         {skill.skill}
                       </span>
-                      <span style={{ fontSize:"0.68rem",
-                        color:"rgba(255,255,255,0.35)" }}>
+                      <span style={{
+                        fontSize:"0.68rem", color:"rgba(255,255,255,0.3)"
+                      }}>
                         {skill.learn_time}
                       </span>
                     </div>
                     <a href={skill.resource} target="_blank"
                       rel="noreferrer" style={{
-                        fontSize      : "0.68rem",
-                        color         : "#f59e0b",
-                        textDecoration: "none"
+                        fontSize:"0.7rem", color:"#f59e0b",
+                        textDecoration:"none"
                       }}>
                       Learn for free →
                     </a>
@@ -1203,47 +1194,54 @@ const ResumePanel = ({ isOpen, onClose, accentColor = "#FF6B2B" }) => {
                 ))}
               </div>
 
-              {/* Market Insights */}
               <div style={{ ...glass, padding:"14px" }}>
-                <p style={{ color:accentColor, fontSize:"0.68rem",
+                <p style={{
+                  color:accentColor, fontSize:"0.68rem",
                   letterSpacing:"0.1rem", marginBottom:"10px",
-                  fontWeight:"600" }}>
+                  fontWeight:"600", margin:"0 0 10px"
+                }}>
                   📊 MARKET INSIGHTS
                 </p>
                 {skillsGap.market_insights?.map((insight, i) => (
-                  <div key={i} style={{ display:"flex", gap:"8px",
-                    marginBottom:"8px" }}>
+                  <div key={i} style={{
+                    display:"flex", gap:"8px", marginBottom:"8px"
+                  }}>
                     <Star size={12} color={accentColor}
                       style={{ flexShrink:0, marginTop:"2px" }} />
-                    <span style={{ fontSize:"0.78rem",
-                      color:"rgba(255,255,255,0.6)" }}>
+                    <span style={{
+                      fontSize:"0.8rem", color:"rgba(255,255,255,0.62)"
+                    }}>
                       {insight}
                     </span>
                   </div>
                 ))}
               </div>
 
-              {/* Certifications */}
               <div style={{ ...glass, padding:"14px" }}>
-                <p style={{ color:accentColor, fontSize:"0.68rem",
+                <p style={{
+                  color:accentColor, fontSize:"0.68rem",
                   letterSpacing:"0.1rem", marginBottom:"10px",
-                  fontWeight:"600" }}>
+                  fontWeight:"600", margin:"0 0 10px"
+                }}>
                   🏆 RECOMMENDED CERTIFICATIONS
                 </p>
                 {skillsGap.recommended_certifications?.map((cert, i) => (
                   <div key={i} style={{
-                    padding     : "10px",
-                    background  : "rgba(255,255,255,0.03)",
-                    border      : "1px solid rgba(255,255,255,0.06)",
-                    borderRadius: "8px",
-                    marginBottom: "8px"
+                    padding:"10px",
+                    background:"rgba(255,255,255,0.03)",
+                    border:"1px solid rgba(255,255,255,0.06)",
+                    borderRadius:"8px", marginBottom:"8px"
                   }}>
-                    <p style={{ fontSize:"0.8rem", fontWeight:"500",
-                      color:"#fff", marginBottom:"4px" }}>
+                    <p style={{
+                      fontSize:"0.82rem", fontWeight:"500",
+                      color:"#fff", marginBottom:"4px", margin:"0 0 4px"
+                    }}>
                       {cert.name}
                     </p>
-                    <p style={{ fontSize:"0.68rem",
-                      color:"rgba(255,255,255,0.4)" }}>
+                    <p style={{
+                      fontSize:"0.7rem",
+                      color:"rgba(255,255,255,0.38)", margin:0
+                    }}>
                       {cert.provider} · {cert.cost} · {cert.time}
                     </p>
                   </div>
@@ -1252,101 +1250,116 @@ const ResumePanel = ({ isOpen, onClose, accentColor = "#FF6B2B" }) => {
             </div>
           )}
 
-          {/* ── SALARY TAB ── */}
+          {/* ── SALARY ── */}
           {activeTab === "salary" && salary && (
             <div style={{ display:"flex", flexDirection:"column", gap:"14px" }}>
-              {/* Main Salary */}
-              <div style={{ ...glass, padding:"20px", textAlign:"center" }}>
-                <p style={{ fontSize:"0.7rem",
-                  color:"rgba(255,255,255,0.35)", marginBottom:"8px" }}>
+              <div style={{ ...glass, padding:"22px", textAlign:"center" }}>
+                <p style={{
+                  fontSize:"0.7rem",
+                  color:"rgba(255,255,255,0.3)", marginBottom:"8px",
+                  margin:"0 0 8px"
+                }}>
                   ESTIMATED SALARY RANGE
                 </p>
-                <p style={{ fontSize:"2rem", fontWeight:"800",
-                  color:accentColor }}>
+                <p style={{
+                  fontSize:"2rem", fontWeight:"800",
+                  color:accentColor, margin:0
+                }}>
                   ${salary.salary_range?.min?.toLocaleString()} —
                   ${salary.salary_range?.max?.toLocaleString()}
                 </p>
-                <p style={{ fontSize:"0.72rem",
-                  color:"rgba(255,255,255,0.4)", marginTop:"4px" }}>
+                <p style={{
+                  fontSize:"0.72rem",
+                  color:"rgba(255,255,255,0.3)", marginTop:"4px"
+                }}>
                   CAD · {salary.location}
                 </p>
                 <div style={{
-                  marginTop   : "12px",
-                  padding     : "10px",
-                  background  : `${accentColor}12`,
-                  border      : `1px solid ${accentColor}25`,
-                  borderRadius: "8px"
+                  marginTop:"12px", padding:"10px",
+                  background:`${accentColor}10`,
+                  border:`1px solid ${accentColor}20`,
+                  borderRadius:"8px"
                 }}>
-                  <p style={{ fontSize:"0.78rem",
-                    color:"rgba(255,255,255,0.7)" }}>
+                  <p style={{
+                    fontSize:"0.8rem",
+                    color:"rgba(255,255,255,0.7)", margin:0
+                  }}>
                     {salary.your_estimate}
                   </p>
                 </div>
               </div>
 
-              {/* By Experience */}
               <div style={{ ...glass, padding:"14px" }}>
-                <p style={{ color:accentColor, fontSize:"0.68rem",
+                <p style={{
+                  color:accentColor, fontSize:"0.68rem",
                   letterSpacing:"0.1rem", marginBottom:"10px",
-                  fontWeight:"600" }}>
+                  fontWeight:"600", margin:"0 0 10px"
+                }}>
                   BY EXPERIENCE LEVEL
                 </p>
-                {Object.entries(salary.by_experience || {}).map(([level, range]) => (
-                  <div key={level} style={{
-                    display        : "flex",
-                    justifyContent : "space-between",
-                    padding        : "8px 0",
-                    borderBottom   : "1px solid rgba(255,255,255,0.04)"
-                  }}>
-                    <span style={{ fontSize:"0.75rem",
-                      color:"rgba(255,255,255,0.5)",
-                      textTransform:"capitalize" }}>
-                      {level.replace("_", " ")}
-                    </span>
-                    <span style={{ fontSize:"0.75rem",
-                      color:"#fff", fontWeight:"500" }}>
-                      {range}
-                    </span>
-                  </div>
-                ))}
+                {Object.entries(salary.by_experience || {}).map(
+                  ([level, range]) => (
+                    <div key={level} style={{
+                      display:"flex", justifyContent:"space-between",
+                      padding:"8px 0",
+                      borderBottom:"1px solid rgba(255,255,255,0.04)"
+                    }}>
+                      <span style={{
+                        fontSize:"0.78rem",
+                        color:"rgba(255,255,255,0.45)",
+                        textTransform:"capitalize"
+                      }}>
+                        {level.replace("_"," ")}
+                      </span>
+                      <span style={{
+                        fontSize:"0.78rem", color:"#fff", fontWeight:"500"
+                      }}>
+                        {range}
+                      </span>
+                    </div>
+                  )
+                )}
               </div>
 
-              {/* Negotiation Tips */}
               <div style={{ ...glass, padding:"14px" }}>
-                <p style={{ color:"#22c55e", fontSize:"0.68rem",
+                <p style={{
+                  color:"#22c55e", fontSize:"0.68rem",
                   letterSpacing:"0.1rem", marginBottom:"10px",
-                  fontWeight:"600" }}>
+                  fontWeight:"600", margin:"0 0 10px"
+                }}>
                   💡 NEGOTIATION TIPS
                 </p>
                 {salary.negotiation_tips?.map((tip, i) => (
-                  <div key={i} style={{ display:"flex", gap:"8px",
-                    marginBottom:"8px" }}>
+                  <div key={i} style={{
+                    display:"flex", gap:"8px", marginBottom:"8px"
+                  }}>
                     <CheckCircle size={12} color="#22c55e"
                       style={{ flexShrink:0, marginTop:"2px" }} />
-                    <span style={{ fontSize:"0.78rem",
-                      color:"rgba(255,255,255,0.6)" }}>
+                    <span style={{
+                      fontSize:"0.8rem", color:"rgba(255,255,255,0.62)"
+                    }}>
                       {tip}
                     </span>
                   </div>
                 ))}
               </div>
 
-              {/* Top Companies */}
               <div style={{ ...glass, padding:"14px" }}>
-                <p style={{ color:accentColor, fontSize:"0.68rem",
+                <p style={{
+                  color:accentColor, fontSize:"0.68rem",
                   letterSpacing:"0.1rem", marginBottom:"10px",
-                  fontWeight:"600" }}>
+                  fontWeight:"600", margin:"0 0 10px"
+                }}>
                   🏢 TOP PAYING COMPANIES
                 </p>
                 <div style={{ display:"flex", flexWrap:"wrap", gap:"6px" }}>
                   {salary.top_paying_companies?.map((company, i) => (
                     <span key={i} style={{
-                      padding     : "4px 12px",
-                      background  : "rgba(255,255,255,0.06)",
-                      border      : "1px solid rgba(255,255,255,0.1)",
-                      borderRadius: "20px",
-                      fontSize    : "0.72rem",
-                      color       : "#ccc"
+                      padding:"4px 12px",
+                      background:"rgba(255,255,255,0.06)",
+                      border:"1px solid rgba(255,255,255,0.08)",
+                      borderRadius:"20px",
+                      fontSize:"0.74rem", color:"#ccc"
                     }}>
                       {company}
                     </span>
@@ -1356,172 +1369,189 @@ const ResumePanel = ({ isOpen, onClose, accentColor = "#FF6B2B" }) => {
             </div>
           )}
 
-          {/* ── COVER LETTER TAB ── */}
+          {/* ── COVER LETTER ── */}
           {activeTab === "cover" && (
             <div style={{ display:"flex", flexDirection:"column", gap:"14px" }}>
               {coverLetter ? (
                 <>
                   {selectedJob && (
                     <div style={{ ...glass, padding:"12px" }}>
-                      <p style={{ fontSize:"0.72rem",
-                        color:"rgba(255,255,255,0.4)",
-                        marginBottom:"2px" }}>
+                      <p style={{
+                        fontSize:"0.7rem",
+                        color:"rgba(255,255,255,0.35)",
+                        marginBottom:"3px", margin:"0 0 3px"
+                      }}>
                         Cover letter for:
                       </p>
-                      <p style={{ fontSize:"0.85rem", fontWeight:"500",
-                        color:"#fff" }}>
+                      <p style={{
+                        fontSize:"0.88rem", fontWeight:"500",
+                        color:"#fff", margin:0
+                      }}>
                         {selectedJob.title} at {selectedJob.company}
                       </p>
                     </div>
                   )}
-
                   <div style={{ ...glass, padding:"16px" }}>
-                    <p style={{ fontSize:"0.78rem",
-                      color:"rgba(255,255,255,0.7)",
-                      lineHeight:"1.8",
-                      whiteSpace:"pre-wrap" }}>
+                    <p style={{
+                      fontSize:"0.85rem",
+                      color:"rgba(255,255,255,0.75)",
+                      lineHeight:"1.8", whiteSpace:"pre-wrap", margin:0
+                    }}>
                       {coverLetter}
                     </p>
                   </div>
-
                   <button
                     onClick={() => {
                       navigator.clipboard.writeText(coverLetter);
                       alert("Copied to clipboard!");
                     }}
                     style={{
-                      padding      : "12px",
-                      background   : `linear-gradient(135deg, ${accentColor}, #ff9a6b)`,
-                      border       : "none",
-                      borderRadius : "10px",
-                      color        : "#fff",
-                      fontSize     : "0.82rem",
-                      fontWeight   : "600",
-                      cursor       : "pointer"
+                      padding:"12px",
+                      background:`linear-gradient(135deg, ${accentColor}, #ff9a6b)`,
+                      border:"none", borderRadius:"10px",
+                      color:"#fff", fontSize:"0.85rem", fontWeight:"600",
+                      cursor:"pointer"
                     }}>
                     Copy to Clipboard
                   </button>
                 </>
               ) : (
                 <div style={{ textAlign:"center", padding:"40px 20px" }}>
-                  <FileText size={40}
-                    color="rgba(255,255,255,0.1)"
-                    style={{ margin:"0 auto 12px" }} />
-                  <p style={{ color:"rgba(255,255,255,0.3)",
-                    fontSize:"0.85rem" }}>
-                    Select a job from the Jobs tab to generate
-                    a cover letter
+                  <FileText size={40} color="rgba(255,255,255,0.08)"
+                    style={{ margin:"0 auto 12px", display:"block" }} />
+                  <p style={{
+                    color:"rgba(255,255,255,0.3)", fontSize:"0.88rem"
+                  }}>
+                    Select a job from the Jobs tab to generate a cover letter
                   </p>
                 </div>
               )}
             </div>
           )}
 
-          {/* ── INTERVIEW TAB ── */}
+          {/* ── INTERVIEW ── */}
           {activeTab === "interview" && (
             <div style={{ display:"flex", flexDirection:"column", gap:"14px" }}>
               {interviewPrep ? (
                 <>
                   {selectedJob && (
                     <div style={{ ...glass, padding:"12px" }}>
-                      <p style={{ fontSize:"0.72rem",
-                        color:"rgba(255,255,255,0.4)",
-                        marginBottom:"2px" }}>
+                      <p style={{
+                        fontSize:"0.7rem",
+                        color:"rgba(255,255,255,0.35)",
+                        marginBottom:"3px", margin:"0 0 3px"
+                      }}>
                         Interview prep for:
                       </p>
-                      <p style={{ fontSize:"0.85rem", fontWeight:"500",
-                        color:"#fff" }}>
+                      <p style={{
+                        fontSize:"0.88rem", fontWeight:"500",
+                        color:"#fff", margin:0
+                      }}>
                         {selectedJob.title} at {selectedJob.company}
                       </p>
                     </div>
                   )}
 
-                  {/* Technical Questions */}
                   <div style={{ ...glass, padding:"14px" }}>
-                    <p style={{ color:accentColor, fontSize:"0.68rem",
+                    <p style={{
+                      color:accentColor, fontSize:"0.68rem",
                       letterSpacing:"0.1rem", marginBottom:"12px",
-                      fontWeight:"600" }}>
+                      fontWeight:"600", margin:"0 0 12px"
+                    }}>
                       💻 TECHNICAL QUESTIONS
                     </p>
                     {interviewPrep.technical_questions?.map((qa, i) => (
                       <div key={i} style={{
-                        marginBottom : "12px",
-                        paddingBottom: "12px",
-                        borderBottom : "1px solid rgba(255,255,255,0.04)"
+                        marginBottom:"12px", paddingBottom:"12px",
+                        borderBottom:"1px solid rgba(255,255,255,0.04)"
                       }}>
-                        <p style={{ fontSize:"0.8rem", fontWeight:"500",
-                          color:"#fff", marginBottom:"6px" }}>
+                        <p style={{
+                          fontSize:"0.82rem", fontWeight:"500",
+                          color:"#fff", marginBottom:"6px", margin:"0 0 6px"
+                        }}>
                           Q: {qa.question}
                         </p>
-                        <p style={{ fontSize:"0.75rem",
+                        <p style={{
+                          fontSize:"0.78rem",
                           color:"rgba(255,255,255,0.5)",
-                          lineHeight:"1.5" }}>
+                          lineHeight:"1.55", margin:0
+                        }}>
                           A: {qa.answer}
                         </p>
                       </div>
                     ))}
                   </div>
 
-                  {/* Behavioral Questions */}
                   <div style={{ ...glass, padding:"14px" }}>
-                    <p style={{ color:"#8b5cf6", fontSize:"0.68rem",
+                    <p style={{
+                      color:"#8b5cf6", fontSize:"0.68rem",
                       letterSpacing:"0.1rem", marginBottom:"12px",
-                      fontWeight:"600" }}>
+                      fontWeight:"600", margin:"0 0 12px"
+                    }}>
                       🧠 BEHAVIORAL QUESTIONS
                     </p>
                     {interviewPrep.behavioral_questions?.map((qa, i) => (
                       <div key={i} style={{
-                        marginBottom : "12px",
-                        paddingBottom: "12px",
-                        borderBottom : "1px solid rgba(255,255,255,0.04)"
+                        marginBottom:"12px", paddingBottom:"12px",
+                        borderBottom:"1px solid rgba(255,255,255,0.04)"
                       }}>
-                        <p style={{ fontSize:"0.8rem", fontWeight:"500",
-                          color:"#fff", marginBottom:"6px" }}>
+                        <p style={{
+                          fontSize:"0.82rem", fontWeight:"500",
+                          color:"#fff", marginBottom:"6px", margin:"0 0 6px"
+                        }}>
                           Q: {qa.question}
                         </p>
-                        <p style={{ fontSize:"0.75rem",
+                        <p style={{
+                          fontSize:"0.78rem",
                           color:"rgba(255,255,255,0.5)",
-                          lineHeight:"1.5" }}>
+                          lineHeight:"1.55", margin:0
+                        }}>
                           A: {qa.answer}
                         </p>
                       </div>
                     ))}
                   </div>
 
-                  {/* Questions to Ask */}
                   <div style={{ ...glass, padding:"14px" }}>
-                    <p style={{ color:"#22c55e", fontSize:"0.68rem",
+                    <p style={{
+                      color:"#22c55e", fontSize:"0.68rem",
                       letterSpacing:"0.1rem", marginBottom:"10px",
-                      fontWeight:"600" }}>
+                      fontWeight:"600", margin:"0 0 10px"
+                    }}>
                       ❓ QUESTIONS TO ASK THEM
                     </p>
                     {interviewPrep.questions_to_ask?.map((q, i) => (
-                      <div key={i} style={{ display:"flex", gap:"8px",
-                        marginBottom:"8px" }}>
+                      <div key={i} style={{
+                        display:"flex", gap:"8px", marginBottom:"8px"
+                      }}>
                         <ChevronRight size={13} color="#22c55e"
                           style={{ flexShrink:0, marginTop:"1px" }} />
-                        <span style={{ fontSize:"0.78rem",
-                          color:"rgba(255,255,255,0.6)" }}>
+                        <span style={{
+                          fontSize:"0.8rem", color:"rgba(255,255,255,0.62)"
+                        }}>
                           {q}
                         </span>
                       </div>
                     ))}
                   </div>
 
-                  {/* Tips */}
                   <div style={{ ...glass, padding:"14px" }}>
-                    <p style={{ color:"#f59e0b", fontSize:"0.68rem",
+                    <p style={{
+                      color:"#f59e0b", fontSize:"0.68rem",
                       letterSpacing:"0.1rem", marginBottom:"10px",
-                      fontWeight:"600" }}>
+                      fontWeight:"600", margin:"0 0 10px"
+                    }}>
                       💡 PREPARATION TIPS
                     </p>
                     {interviewPrep.preparation_tips?.map((tip, i) => (
-                      <div key={i} style={{ display:"flex", gap:"8px",
-                        marginBottom:"8px" }}>
+                      <div key={i} style={{
+                        display:"flex", gap:"8px", marginBottom:"8px"
+                      }}>
                         <Star size={12} color="#f59e0b"
                           style={{ flexShrink:0, marginTop:"2px" }} />
-                        <span style={{ fontSize:"0.78rem",
-                          color:"rgba(255,255,255,0.6)" }}>
+                        <span style={{
+                          fontSize:"0.8rem", color:"rgba(255,255,255,0.62)"
+                        }}>
                           {tip}
                         </span>
                       </div>
@@ -1530,37 +1560,34 @@ const ResumePanel = ({ isOpen, onClose, accentColor = "#FF6B2B" }) => {
                 </>
               ) : (
                 <div style={{ textAlign:"center", padding:"40px 20px" }}>
-                  <MessageSquare size={40}
-                    color="rgba(255,255,255,0.1)"
-                    style={{ margin:"0 auto 12px" }} />
-                  <p style={{ color:"rgba(255,255,255,0.3)",
-                    fontSize:"0.85rem" }}>
-                    Select a job from the Jobs tab to generate
-                    interview prep
+                  <MessageSquare size={40} color="rgba(255,255,255,0.08)"
+                    style={{ margin:"0 auto 12px", display:"block" }} />
+                  <p style={{
+                    color:"rgba(255,255,255,0.3)", fontSize:"0.88rem"
+                  }}>
+                    Select a job from the Jobs tab to generate interview prep
                   </p>
                 </div>
               )}
             </div>
           )}
 
-          {/* Empty states for tabs */}
+          {/* Empty state */}
           {activeTab === "analysis" && !analysis && (
             <div style={{ textAlign:"center", padding:"40px 20px" }}>
-              <BarChart2 size={40} color="rgba(255,255,255,0.1)"
-                style={{ margin:"0 auto 12px" }} />
-              <p style={{ color:"rgba(255,255,255,0.3)",
-                fontSize:"0.85rem" }}>
+              <BarChart2 size={40} color="rgba(255,255,255,0.08)"
+                style={{ margin:"0 auto 12px", display:"block" }} />
+              <p style={{
+                color:"rgba(255,255,255,0.3)", fontSize:"0.88rem"
+              }}>
                 Upload your resume first to see analysis
               </p>
               <button onClick={() => setActiveTab("upload")} style={{
-                marginTop   : "12px",
-                padding     : "8px 16px",
-                background  : `${accentColor}20`,
-                border      : `1px solid ${accentColor}40`,
-                borderRadius: "8px",
-                color       : accentColor,
-                cursor      : "pointer",
-                fontSize    : "0.78rem"
+                marginTop:"14px", padding:"8px 18px",
+                background:`${accentColor}18`,
+                border:`1px solid ${accentColor}35`,
+                borderRadius:"8px", color:accentColor,
+                cursor:"pointer", fontSize:"0.8rem"
               }}>
                 Upload Resume
               </button>
@@ -1571,8 +1598,12 @@ const ResumePanel = ({ isOpen, onClose, accentColor = "#FF6B2B" }) => {
 
       <style>{`
         @keyframes spin {
-          from { transform: rotate(0deg); }
-          to   { transform: rotate(360deg); }
+          from { transform:rotate(0deg); }
+          to   { transform:rotate(360deg); }
+        }
+        @keyframes pulse {
+          0%,100% { opacity:1; }
+          50%     { opacity:0.4; }
         }
       `}</style>
     </>

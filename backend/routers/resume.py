@@ -17,7 +17,8 @@ from agents.resume_agent import (
     generate_interview_prep
 )
 from agents.job_agent import (
-    match_jobs, analyze_skills_gap, get_salary_insights
+    match_jobs, analyze_skills_gap,
+    get_salary_insights, get_real_jobs
 )
 
 router = APIRouter()
@@ -56,13 +57,11 @@ def create_pdf(resume_text: str, analysis: dict = None,
             bottomMargin = 0.5 * inch
         )
 
-        # ---- Colors ----
         ORANGE = colors.HexColor('#FF6B2B')
         DARK   = colors.HexColor('#1a1a1a')
         GRAY   = colors.HexColor('#555555')
         LINE   = colors.HexColor('#eeeeee')
 
-        # ---- Styles ----
         name_style = ParagraphStyle(
             'Name',
             fontName  = 'Helvetica-Bold',
@@ -126,7 +125,6 @@ def create_pdf(resume_text: str, analysis: dict = None,
 
         content = []
 
-        # ---- Parse sections ----
         lines    = resume_text.replace('|', '\n').split('\n')
         sections = {}
         current  = 'header'
@@ -149,10 +147,9 @@ def create_pdf(resume_text: str, analysis: dict = None,
         }
 
         for line in lines:
-            stripped    = line.strip()
-            line_upper  = stripped.upper()
-            matched     = False
-
+            stripped   = line.strip()
+            line_upper = stripped.upper()
+            matched    = False
             for keyword, sec_name in section_keywords.items():
                 if keyword in line_upper and len(stripped) < 50:
                     current = sec_name
@@ -160,13 +157,12 @@ def create_pdf(resume_text: str, analysis: dict = None,
                         sections[current] = []
                     matched = True
                     break
-
             if not matched and stripped:
                 if current not in sections:
                     sections[current] = []
                 sections[current].append(stripped)
 
-        # ---- HEADER ----
+        # HEADER
         header_lines = sections.get('header', [])
         name = ""
         for line in header_lines:
@@ -177,21 +173,17 @@ def create_pdf(resume_text: str, analysis: dict = None,
                     .strip()
                 )
                 break
-
         if not name and analysis:
             name = analysis.get('name', 'Professional')
 
         content.append(Paragraph(name or "Resume", name_style))
 
-        # Contact info
         contact_parts = []
         for line in header_lines[1:6]:
             if line and len(line) > 3:
                 contact_parts.append(line)
-
         if contact_parts:
             contact_text = "  ·  ".join(contact_parts[:4])
-            # Escape special chars
             contact_text = (contact_text
                 .replace('&', '&amp;')
                 .replace('<', '&lt;')
@@ -199,14 +191,12 @@ def create_pdf(resume_text: str, analysis: dict = None,
             )
             content.append(Paragraph(contact_text, contact_style))
 
-        # Orange divider
         content.append(Spacer(1, 6))
         content.append(HRFlowable(
             width="100%", thickness=2,
             color=ORANGE, spaceAfter=8
         ))
 
-        # ---- HELPER ----
         def add_section(sec_key, sec_label):
             if sec_key not in sections or not sections[sec_key]:
                 return
@@ -216,7 +206,7 @@ def create_pdf(resume_text: str, analysis: dict = None,
                 color=LINE, spaceAfter=6
             ))
 
-        # ---- SUMMARY ----
+        # SUMMARY
         if 'summary' in sections and sections['summary']:
             add_section('summary', 'PROFESSIONAL SUMMARY')
             summary_text = ' '.join(sections['summary'])
@@ -227,7 +217,7 @@ def create_pdf(resume_text: str, analysis: dict = None,
             )
             content.append(Paragraph(safe, body_style))
 
-        # ---- SKILLS ----
+        # SKILLS
         if 'skills' in sections and sections['skills']:
             add_section('skills', 'TECHNICAL SKILLS')
             for line in sections['skills']:
@@ -245,7 +235,7 @@ def create_pdf(resume_text: str, analysis: dict = None,
                     skill_text = safe
                 content.append(Paragraph(skill_text, body_style))
 
-        # ---- EXPERIENCE ----
+        # EXPERIENCE
         if 'experience' in sections and sections['experience']:
             add_section('experience', 'EXPERIENCE')
             role_words = [
@@ -263,7 +253,6 @@ def create_pdf(resume_text: str, analysis: dict = None,
                 'architected', 'deployed', 'collaborated', 'executed',
                 'enhanced', 'integrated', 'improved', 'delivered'
             ]
-
             for line in sections['experience']:
                 if not line:
                     continue
@@ -273,7 +262,6 @@ def create_pdf(resume_text: str, analysis: dict = None,
                     .replace('>', '&gt;')
                 )
                 line_lower = line.lower()
-
                 if (('—' in line or '–' in line or '-' in line) and
                      any(w in line_lower for w in role_words) and
                      len(line) < 100):
@@ -289,11 +277,11 @@ def create_pdf(resume_text: str, analysis: dict = None,
                 else:
                     content.append(Paragraph(safe, body_style))
 
-        # ---- PROJECTS ----
+        # PROJECTS
         if 'projects' in sections and sections['projects']:
             add_section('projects', 'PROJECTS')
             action_verbs = ['built', 'developed', 'implemented',
-                           'created', 'designed', 'built']
+                           'created', 'designed']
             for line in sections['projects']:
                 if not line:
                     continue
@@ -304,7 +292,8 @@ def create_pdf(resume_text: str, analysis: dict = None,
                 )
                 if '(' in line and ')' in line and len(line) < 60:
                     content.append(Spacer(1, 4))
-                    content.append(Paragraph(f"<b>{safe}</b>", job_title_style))
+                    content.append(Paragraph(
+                        f"<b>{safe}</b>", job_title_style))
                 elif (line.startswith('•') or line.startswith('-') or
                       any(v in line.lower() for v in action_verbs)):
                     clean = safe.lstrip('•- ').strip()
@@ -312,7 +301,7 @@ def create_pdf(resume_text: str, analysis: dict = None,
                 else:
                     content.append(Paragraph(safe, body_style))
 
-        # ---- EDUCATION ----
+        # EDUCATION
         if 'education' in sections and sections['education']:
             add_section('education', 'EDUCATION')
             degree_words = [
@@ -329,11 +318,12 @@ def create_pdf(resume_text: str, analysis: dict = None,
                     .replace('>', '&gt;')
                 )
                 if any(w in line.lower() for w in degree_words):
-                    content.append(Paragraph(f"<b>{safe}</b>", job_title_style))
+                    content.append(Paragraph(
+                        f"<b>{safe}</b>", job_title_style))
                 else:
                     content.append(Paragraph(safe, body_style))
 
-        # ---- CERTIFICATIONS ----
+        # CERTIFICATIONS
         if 'certifications' in sections and sections['certifications']:
             add_section('certifications', 'CERTIFICATIONS')
             for line in sections['certifications']:
@@ -345,7 +335,7 @@ def create_pdf(resume_text: str, analysis: dict = None,
                     )
                     content.append(Paragraph(f"• {safe}", bullet_style))
 
-        # ---- ACHIEVEMENTS ----
+        # ACHIEVEMENTS
         if 'achievements' in sections and sections['achievements']:
             add_section('achievements', 'ACHIEVEMENTS')
             for line in sections['achievements']:
@@ -357,7 +347,7 @@ def create_pdf(resume_text: str, analysis: dict = None,
                     )
                     content.append(Paragraph(f"• {safe}", bullet_style))
 
-        # ---- FOOTER ----
+        # FOOTER
         content.append(Spacer(1, 20))
         content.append(HRFlowable(
             width="100%", thickness=1,
@@ -563,8 +553,38 @@ async def get_job_matches(
         raise HTTPException(status_code=400,
             detail="Please upload your resume first")
 
-    jobs = match_jobs(user_data["analysis"], user_data["preferences"])
-    return {"success": True, "jobs": jobs, "total": len(jobs)}
+    api_key = os.getenv("JSEARCH_API_KEY", "")
+    source  = "ai"
+
+    # Try real jobs first
+    if api_key and api_key not in ["your_key_here", ""]:
+        try:
+            jobs = get_real_jobs(
+                user_data["analysis"],
+                user_data["preferences"]
+            )
+            if jobs:
+                source = "live"
+                return {
+                    "success": True,
+                    "jobs"   : jobs,
+                    "total"  : len(jobs),
+                    "source" : source
+                }
+        except Exception as e:
+            print(f"Real jobs failed: {e} — falling back to AI")
+
+    # Fallback to AI generated
+    jobs = match_jobs(
+        user_data["analysis"],
+        user_data["preferences"]
+    )
+    return {
+        "success": True,
+        "jobs"   : jobs,
+        "total"  : len(jobs),
+        "source" : source
+    }
 
 
 @router.get("/skills-gap")
@@ -576,7 +596,10 @@ async def get_skills_gap(
         raise HTTPException(status_code=400,
             detail="Please upload your resume first")
 
-    gap = analyze_skills_gap(user_data["analysis"], user_data["preferences"])
+    gap = analyze_skills_gap(
+        user_data["analysis"],
+        user_data["preferences"]
+    )
     return {"success": True, "gap": gap}
 
 
@@ -615,5 +638,6 @@ async def get_resume_status(
                           if user_data.get("improved") else None,
         "preferences"   : user_data["preferences"]
     }
+
 
 print("✅ Resume Router ready!")
