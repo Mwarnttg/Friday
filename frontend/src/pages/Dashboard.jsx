@@ -34,7 +34,6 @@ const Dashboard = () => {
   const [input,       setInput]       = useState("");
   const [loading,     setLoading]     = useState(false);
   const [activeAgent, setActiveAgent] = useState("auto");
-  const [user,        setUser]        = useState(null);
   const [character,   setCharacter]   = useState(null);
   const [resumeOpen,  setResumeOpen]  = useState(false);
   const chatEndRef = useRef(null);
@@ -44,10 +43,7 @@ const Dashboard = () => {
   const navigate   = useNavigate();
 
   useEffect(() => {
-    const userData = localStorage.getItem("friday_user");
-    if (!userData) { navigate("/login"); return; }
-    setUser(JSON.parse(userData));
-
+    // Load character — no login needed
     const charData = localStorage.getItem("friday_character");
     const char     = charData ? JSON.parse(charData) : null;
     setCharacter(char);
@@ -74,7 +70,7 @@ const Dashboard = () => {
       time   : new Date().toLocaleTimeString([],
         { hour:"2-digit", minute:"2-digit" })
     }]);
-  }, [navigate]);
+  }, []);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -98,14 +94,12 @@ const Dashboard = () => {
     }]);
 
     try {
-      const token = localStorage.getItem("friday_token");
-      const res   = await axios.post(`${API}/api/chat`,
+      const res = await axios.post(`${API}/api/chat`,
         {
           message     : msg,
           agent       : activeAgent,
           system_prompt: character?.systemPrompt || null
-        },
-        { headers: { Authorization: `Bearer ${token}` }}
+        }
       );
 
       setMessages(prev => [...prev.slice(0, -1), {
@@ -139,10 +133,8 @@ const Dashboard = () => {
     }
   };
 
-  const logout          = () => { localStorage.clear(); navigate("/login"); };
   const changeCharacter = () => navigate("/select");
   const currentMeta     = AGENT_META[activeAgent] || AGENT_META.auto;
-
   const accentColor     = character?.color || "#FF6B2B";
   const accentGlow      = character?.glow  || "rgba(255,107,43,0.4)";
 
@@ -220,27 +212,37 @@ const Dashboard = () => {
               alignItems : "center",
               gap        : "8px",
               padding    : "5px 12px",
-              background : `${accentColor}12`,
-              border     : `1px solid ${accentColor}25`,
+              background : "rgba(255,255,255,0.04)",
+              border     : "1px solid rgba(255,255,255,0.08)",
               borderRadius: "20px",
               cursor     : "pointer",
               transition : "all 0.2s"
             }}
-            onMouseEnter={e =>
-              e.currentTarget.style.background = `${accentColor}20`}
-            onMouseLeave={e =>
-              e.currentTarget.style.background = `${accentColor}12`}
-            >
+            onMouseEnter={e => {
+              e.currentTarget.style.borderColor = `${accentColor}40`;
+              e.currentTarget.style.background  = `${accentColor}10`;
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)";
+              e.currentTarget.style.background  = "rgba(255,255,255,0.04)";
+            }}>
               <div style={{
-                width:"20px", height:"20px",
-                borderRadius:"50%", overflow:"hidden"
+                width       : "20px",
+                height      : "20px",
+                borderRadius: "50%",
+                background  : `${accentColor}30`,
+                border      : `1px solid ${accentColor}60`,
+                display     : "flex",
+                alignItems  : "center",
+                justifyContent: "center",
+                fontSize    : "10px"
               }}>
-                <img src={character.image} alt={character.name}
-                  style={{ width:"100%", height:"100%",
-                    objectFit:"cover" }} />
+                {character.name[0]}
               </div>
               <span style={{
-                fontSize:"0.72rem", color:accentColor, fontWeight:"500"
+                fontSize : "0.72rem",
+                color    : "rgba(255,255,255,0.6)",
+                fontWeight: "500"
               }}>
                 {character.name}
               </span>
@@ -248,523 +250,402 @@ const Dashboard = () => {
           )}
         </div>
 
-        {/* Right */}
-        <div style={{ display:"flex", alignItems:"center", gap:"12px" }}>
-          <div style={{
-            display    : "flex",
-            alignItems : "center",
-            gap        : "6px",
-            padding    : "5px 12px",
-            background : "rgba(34,197,94,0.08)",
-            border     : "1px solid rgba(34,197,94,0.15)",
-            borderRadius: "20px"
-          }}>
-            <div style={{
-              width:"6px", height:"6px",
-              borderRadius:"50%",
-              background:"#22c55e",
-              boxShadow:"0 0 6px #22c55e",
-              animation:"pulse 2s infinite"
-            }} />
-            <span style={{
-              fontSize:"0.68rem", color:"#22c55e", fontWeight:"500"
-            }}>
-              Online
-            </span>
-          </div>
-
-          <div style={{
-            display    : "flex",
-            alignItems : "center",
-            gap        : "8px",
-            padding    : "5px 12px",
-            background : "rgba(255,255,255,0.04)",
-            border     : "1px solid rgba(255,255,255,0.08)",
-            borderRadius: "20px"
-          }}>
-            <div style={{
-              width:"22px", height:"22px",
-              borderRadius:"50%",
-              background:`${accentColor}20`,
-              border:`1px solid ${accentColor}40`,
-              display:"flex", alignItems:"center",
-              justifyContent:"center"
-            }}>
-              <User size={11} color={accentColor} />
-            </div>
-            <span style={{
-              fontSize:"0.72rem", color:"rgba(255,255,255,0.6)"
-            }}>
-              {user?.name || "User"}
-            </span>
-          </div>
-
-          <button onClick={logout} style={{
-            padding     : "6px 12px",
-            background  : "transparent",
-            border      : "1px solid rgba(255,255,255,0.08)",
-            borderRadius: "20px",
-            color       : "rgba(255,255,255,0.35)",
-            fontSize    : "0.72rem",
-            cursor      : "pointer",
-            display     : "flex",
-            alignItems  : "center",
-            gap         : "5px",
-            transition  : "all 0.2s"
-          }}
-          onMouseEnter={e => {
-            e.currentTarget.style.borderColor = "rgba(239,68,68,0.4)";
-            e.currentTarget.style.color       = "#ef4444";
-          }}
-          onMouseLeave={e => {
-            e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)";
-            e.currentTarget.style.color       = "rgba(255,255,255,0.35)";
-          }}>
-            <LogOut size={11} />
-            Sign out
-          </button>
+        {/* Right — agent pills */}
+        <div style={{
+          display   : "flex",
+          gap       : "4px",
+          overflowX : "auto",
+          maxWidth  : "60vw",
+          scrollbarWidth: "none"
+        }}>
+          {Object.entries(AGENT_META).map(([key, meta]) => {
+            const Icon     = meta.icon;
+            const isActive = activeAgent === key;
+            return (
+              <button key={key}
+                onClick={() => setActiveAgent(key)}
+                style={{
+                  display    : "flex",
+                  alignItems : "center",
+                  gap        : "5px",
+                  padding    : "5px 10px",
+                  background : isActive
+                    ? `${meta.color}18` : "transparent",
+                  border     : isActive
+                    ? `1px solid ${meta.color}35`
+                    : "1px solid transparent",
+                  borderRadius: "20px",
+                  cursor     : "pointer",
+                  whiteSpace : "nowrap",
+                  transition : "all 0.2s",
+                  flexShrink : 0
+                }}>
+                <Icon size={11}
+                  color={isActive
+                    ? meta.color : "rgba(255,255,255,0.3)"} />
+                <span style={{
+                  fontSize : "0.65rem",
+                  color    : isActive
+                    ? "#fff" : "rgba(255,255,255,0.3)",
+                  fontWeight: isActive ? "600" : "400"
+                }}>
+                  {meta.label}
+                </span>
+              </button>
+            );
+          })}
         </div>
-      </div>
 
-      {/* ── AGENT BAR ── */}
-      <div style={{
-        zIndex        : 10,
-        padding       : "8px 24px",
-        display       : "flex",
-        alignItems    : "center",
-        gap           : "6px",
-        overflowX     : "auto",
-        borderBottom  : "1px solid rgba(255,255,255,0.04)",
-        background    : "rgba(5,5,8,0.6)",
-        backdropFilter: "blur(10px)",
-        flexShrink    : 0,
-        scrollbarWidth: "none"
-      }}>
-        {Object.entries(AGENT_META).map(([key, meta]) => {
-          const Icon     = meta.icon;
-          const isActive = activeAgent === key;
-          return (
-            <button key={key} onClick={() => setActiveAgent(key)}
-              style={{
-                display      : "flex",
-                alignItems   : "center",
-                gap          : "5px",
-                padding      : "5px 12px",
-                background   : isActive
-                  ? `${meta.color}15` : "transparent",
-                border       : isActive
-                  ? `1px solid ${meta.color}35`
-                  : "1px solid transparent",
-                borderRadius : "20px",
-                cursor       : "pointer",
-                whiteSpace   : "nowrap",
-                flexShrink   : 0,
-                transition   : "all 0.2s"
-              }}
-              onMouseEnter={e => {
-                if (!isActive) {
-                  e.currentTarget.style.background =
-                    "rgba(255,255,255,0.05)";
-                  e.currentTarget.style.borderColor =
-                    "rgba(255,255,255,0.08)";
-                }
-              }}
-              onMouseLeave={e => {
-                if (!isActive) {
-                  e.currentTarget.style.background = "transparent";
-                  e.currentTarget.style.borderColor = "transparent";
-                }
-              }}
-            >
-              <Icon size={11}
-                color={isActive
-                  ? meta.color : "rgba(255,255,255,0.3)"} />
-              <span style={{
-                fontSize : "0.68rem",
-                color    : isActive
-                  ? meta.color : "rgba(255,255,255,0.35)",
-                fontWeight: isActive ? "600" : "400"
-              }}>
-                {meta.label}
-              </span>
-            </button>
-          );
-        })}
-
-        {/* Career button */}
-        <button onClick={() => setResumeOpen(true)} style={{
-          display      : "flex",
-          alignItems   : "center",
-          gap          : "5px",
-          padding      : "5px 12px",
-          background   : "rgba(255,107,43,0.1)",
-          border       : "1px solid rgba(255,107,43,0.25)",
-          borderRadius : "20px",
-          cursor       : "pointer",
-          whiteSpace   : "nowrap",
-          flexShrink   : 0,
-          marginLeft   : "auto",
-          transition   : "all 0.2s"
+        {/* Change character button */}
+        <button onClick={changeCharacter} style={{
+          display    : "flex",
+          alignItems : "center",
+          gap        : "6px",
+          padding    : "7px 14px",
+          background : "rgba(255,255,255,0.04)",
+          border     : "1px solid rgba(255,255,255,0.08)",
+          borderRadius: "10px",
+          color      : "rgba(255,255,255,0.5)",
+          cursor     : "pointer",
+          fontSize   : "0.75rem",
+          transition : "all 0.2s"
         }}
-        onMouseEnter={e =>
-          e.currentTarget.style.background = "rgba(255,107,43,0.18)"}
-        onMouseLeave={e =>
-          e.currentTarget.style.background = "rgba(255,107,43,0.1)"}
-        >
-          <Briefcase size={11} color="#FF6B2B" />
-          <span style={{
-            fontSize:"0.68rem", color:"#FF6B2B", fontWeight:"600"
-          }}>
-            Career
-          </span>
+        onMouseEnter={e => {
+          e.currentTarget.style.background  = `${accentColor}15`;
+          e.currentTarget.style.borderColor = `${accentColor}40`;
+          e.currentTarget.style.color       = accentColor;
+        }}
+        onMouseLeave={e => {
+          e.currentTarget.style.background  = "rgba(255,255,255,0.04)";
+          e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)";
+          e.currentTarget.style.color       = "rgba(255,255,255,0.5)";
+        }}>
+          <User size={13} />
+          Change Character
         </button>
       </div>
 
       {/* ── CHAT AREA ── */}
       <div ref={chatRef} style={{
-        flex         : 1,
-        display      : "flex",
-        flexDirection: "column",
-        overflow     : "hidden",
-        position     : "relative",
-        zIndex       : 1
+        flex     : 1,
+        overflowY: "auto",
+        padding  : "24px 10vw",
+        zIndex   : 5
       }}>
-        {/* Messages */}
-        <div style={{
-          flex         : 1,
-          overflowY    : "auto",
-          padding      : "32px 10vw",
-          display      : "flex",
-          flexDirection: "column",
-          gap          : "24px"
-        }}>
-          {messages.map((msg, i) => {
-            const isUser = msg.role === "user";
-            const meta   = AGENT_META[msg.agent];
-            const Icon   = meta?.icon || Zap;
-            const color  = meta?.color || accentColor;
+        {messages.map((msg, i) => {
+          const isUser    = msg.role === "user";
+          const isThinking= msg.content === "thinking";
+          const meta      = AGENT_META[msg.agent] || AGENT_META.auto;
 
-            return (
-              <div key={i} style={{
-                display      : "flex",
-                justifyContent: isUser ? "flex-end" : "flex-start",
-                alignItems   : "flex-start",
-                gap          : "12px",
-                animation    : "fadeIn 0.3s ease"
+          return (
+            <div key={i} style={{
+              display       : "flex",
+              justifyContent: isUser ? "flex-end" : "flex-start",
+              alignItems    : "flex-start",
+              gap           : "12px",
+              marginBottom  : "24px",
+              animation     : "fadeIn 0.3s ease"
+            }}>
+              {/* FRIDAY avatar */}
+              {!isUser && (
+                <div style={{
+                  width        : "36px",
+                  height       : "36px",
+                  borderRadius : "12px",
+                  background   : character
+                    ? `${accentColor}20`
+                    : "rgba(255,255,255,0.06)",
+                  border       : `1px solid ${character
+                    ? accentColor + "40"
+                    : "rgba(255,255,255,0.1)"}`,
+                  display      : "flex",
+                  alignItems   : "center",
+                  justifyContent: "center",
+                  flexShrink   : 0,
+                  marginTop    : "2px",
+                  overflow     : "hidden"
+                }}>
+                  {character?.image ? (
+                    <img src={character.image}
+                      alt={character.name}
+                      style={{ width:"100%", height:"100%",
+                        objectFit:"cover" }}
+                      onError={e => { e.target.style.display="none"; }}
+                    />
+                  ) : (
+                    <Zap size={15} color={accentColor} />
+                  )}
+                </div>
+              )}
+
+              <div style={{
+                maxWidth: "70%",
+                display : "flex",
+                flexDirection: "column",
+                alignItems: isUser ? "flex-end" : "flex-start"
               }}>
-                {/* FRIDAY avatar */}
-                {!isUser && (
-                  <div style={{
-                    width        : "36px",
-                    height       : "36px",
-                    borderRadius : "12px",
-                    overflow     : "hidden",
-                    border       : `1px solid ${color}30`,
-                    flexShrink   : 0,
-                    marginTop    : "2px",
-                    background   : character
-                      ? "transparent" : `${color}15`,
-                    boxShadow    : `0 4px 12px ${color}20`
+                {/* Label */}
+                {!isUser && !isThinking && (
+                  <span style={{
+                    fontSize     : "0.62rem",
+                    color        : accentColor,
+                    fontWeight   : "600",
+                    marginBottom : "4px",
+                    letterSpacing: "0.05rem"
                   }}>
-                    {character && msg.agent !== "thinking" ? (
-                      <img src={character.image} alt={character.name}
-                        style={{ width:"100%", height:"100%",
-                          objectFit:"cover" }} />
-                    ) : (
-                      <div style={{
-                        width:"100%", height:"100%",
-                        display:"flex", alignItems:"center",
-                        justifyContent:"center"
-                      }}>
-                        <Icon size={16} color={color} />
-                      </div>
-                    )}
-                  </div>
+                    {msg.label || "FRIDAY"}
+                  </span>
                 )}
 
+                {/* Bubble */}
                 <div style={{
-                  maxWidth     : isUser ? "65%" : "85%",
-                  minWidth     : "200px",
-                  width        : "fit-content",
-                  display      : "flex",
-                  flexDirection: "column",
-                  gap          : "5px"
+                  padding     : isThinking ? "14px 18px" : "14px 18px",
+                  background  : isUser
+                    ? `${accentColor}15`
+                    : "rgba(255,255,255,0.04)",
+                  border      : isUser
+                    ? `1px solid ${accentColor}30`
+                    : "1px solid rgba(255,255,255,0.07)",
+                  borderRadius: isUser
+                    ? "18px 4px 18px 18px"
+                    : "4px 18px 18px 18px",
+                  backdropFilter: "blur(10px)",
+                  boxShadow   : "0 4px 20px rgba(0,0,0,0.15)"
                 }}>
-                  {/* Label */}
-                  {!isUser && msg.agent !== "thinking" && (
+                  {isThinking ? (
                     <div style={{
-                      display:"flex", alignItems:"center", gap:"8px"
+                      display: "flex", gap: "5px", alignItems: "center"
                     }}>
-                      <span style={{
-                        fontSize:"0.68rem", fontWeight:"600",
-                        color:"rgba(255,255,255,0.4)"
-                      }}>
-                        {msg.label || "FRIDAY"}
-                      </span>
-                      {msg.tokens && (
-                        <span style={{
-                          fontSize    : "0.6rem",
-                          color       : "rgba(255,255,255,0.2)",
-                          background  : "rgba(255,255,255,0.05)",
-                          padding     : "1px 6px",
-                          borderRadius: "4px"
-                        }}>
-                          {msg.tokens} tokens
-                        </span>
-                      )}
+                      {[0,1,2].map(j => (
+                        <div key={j} style={{
+                          width:"6px", height:"6px",
+                          borderRadius:"50%",
+                          background: accentColor,
+                          animation : `dot 0.6s ${j*0.15}s infinite alternate`
+                        }} />
+                      ))}
                     </div>
-                  )}
-
-                  {/* Bubble */}
-                  <div style={{
-                    padding      : "16px 20px",
-                    background   : isUser
-                      ? `linear-gradient(135deg,
-                          ${accentColor}20, ${accentColor}08)`
-                      : "rgba(255,255,255,0.07)",
-                    border       : isUser
-                      ? `1px solid ${accentColor}30`
-                      : "1px solid rgba(255,255,255,0.07)",
-                    borderRadius : isUser
-                      ? "18px 4px 18px 18px"
-                      : "4px 18px 18px 18px",
-                    backdropFilter: "blur(20px)",
-                    boxShadow    : isUser
-                      ? `0 4px 20px ${accentColor}10`
-                      : "0 4px 20px rgba(0,0,0,0.2)"
-                  }}>
-                    {/* ── MESSAGE CONTENT ── */}
-                    {msg.content === "thinking" ? (
-                      <div style={{
-                        display  :"flex", gap:"5px",
-                        alignItems:"center", padding:"2px 0"
-                      }}>
-                        {[0,1,2].map(j => (
-                          <div key={j} style={{
-                            width:"6px", height:"6px",
-                            borderRadius:"50%",
-                            background: accentColor,
-                            animation:`dot 0.8s ${j*0.2}s infinite alternate`
-                          }} />
-                        ))}
-                      </div>
-                    ) : isUser ? (
-                      <p style={{
-                        color    : "rgba(255,255,255,0.9)",
-                        fontSize : "0.9rem",
-                        lineHeight: "1.7",
-                        whiteSpace: "pre-wrap",
-                        margin   : 0,
-                        fontFamily: "Inter, sans-serif"
-                      }}>
-                        {msg.content}
-                      </p>
-                    ) : (
-                      <MessageRenderer
-                        content={msg.content}
-                        accentColor={accentColor}
-                      />
-                    )}
-                  </div>
-
-                  {/* Time */}
-                  {msg.time && (
-                    <div style={{
-                      display      : "flex",
-                      alignItems   : "center",
-                      gap          : "4px",
-                      justifyContent: isUser ? "flex-end" : "flex-start"
+                  ) : isUser ? (
+                    <p style={{
+                      fontSize  : "0.92rem",
+                      color     : "rgba(255,255,255,0.9)",
+                      margin    : 0,
+                      lineHeight: "1.6",
+                      fontFamily: "Inter, sans-serif"
                     }}>
-                      <Clock size={9}
-                        color="rgba(255,255,255,0.15)" />
-                      <span style={{
-                        fontSize:"0.6rem",
-                        color:"rgba(255,255,255,0.15)"
-                      }}>
-                        {msg.time}
-                      </span>
-                    </div>
+                      {msg.content}
+                    </p>
+                  ) : (
+                    <MessageRenderer
+                      content={msg.content}
+                      accentColor={accentColor}
+                    />
                   )}
                 </div>
 
-                {/* User avatar */}
-                {isUser && (
+                {/* Time + tokens */}
+                {!isThinking && (
                   <div style={{
-                    width        : "36px",
-                    height       : "36px",
-                    borderRadius : "12px",
-                    background   : "rgba(255,255,255,0.06)",
-                    border       : "1px solid rgba(255,255,255,0.1)",
-                    display      : "flex",
-                    alignItems   : "center",
-                    justifyContent: "center",
-                    flexShrink   : 0,
-                    marginTop    : "2px",
-                    boxShadow    : "0 4px 12px rgba(0,0,0,0.2)"
+                    display   : "flex",
+                    gap       : "8px",
+                    marginTop : "4px",
+                    alignItems: "center"
                   }}>
-                    <User size={15}
-                      color="rgba(255,255,255,0.4)" />
+                    {msg.tokens && (
+                      <span style={{
+                        fontSize:"0.58rem",
+                        color:"rgba(255,255,255,0.12)"
+                      }}>
+                        {msg.tokens} tokens
+                      </span>
+                    )}
+                    <span style={{
+                      fontSize:"0.6rem",
+                      color:"rgba(255,255,255,0.15)"
+                    }}>
+                      {msg.time}
+                    </span>
                   </div>
                 )}
               </div>
-            );
-          })}
-          <div ref={chatEndRef} />
+
+              {/* User avatar */}
+              {isUser && (
+                <div style={{
+                  width        : "36px",
+                  height       : "36px",
+                  borderRadius : "12px",
+                  background   : "rgba(255,255,255,0.06)",
+                  border       : "1px solid rgba(255,255,255,0.1)",
+                  display      : "flex",
+                  alignItems   : "center",
+                  justifyContent: "center",
+                  flexShrink   : 0,
+                  marginTop    : "2px",
+                  boxShadow    : "0 4px 12px rgba(0,0,0,0.2)"
+                }}>
+                  <User size={15}
+                    color="rgba(255,255,255,0.4)" />
+                </div>
+              )}
+            </div>
+          );
+        })}
+        <div ref={chatEndRef} />
+      </div>
+
+      {/* ── INPUT AREA ── */}
+      <div style={{
+        padding      : "16px 10vw 24px",
+        background   : "rgba(5,5,8,0.8)",
+        backdropFilter: "blur(20px)",
+        borderTop    : "1px solid rgba(255,255,255,0.05)",
+        flexShrink   : 0,
+        zIndex       : 10
+      }}>
+        {/* Agent pill */}
+        <div style={{
+          display    : "flex",
+          alignItems : "center",
+          gap        : "6px",
+          marginBottom: "10px"
+        }}>
+          <div style={{
+            width       : "6px",
+            height      : "6px",
+            borderRadius: "50%",
+            background  : currentMeta.color,
+            boxShadow   : `0 0 6px ${currentMeta.color}`
+          }} />
+          <span style={{
+            fontSize:"0.65rem",
+            color:"rgba(255,255,255,0.3)",
+            fontWeight:"500"
+          }}>
+            {currentMeta.label}
+            {character && ` · ${character.name}`}
+          </span>
         </div>
 
-        {/* ── INPUT AREA ── */}
+        {/* Input box */}
         <div style={{
-          padding      : "16px 10vw 24px",
-          background   : "rgba(5,5,8,0.8)",
-          backdropFilter: "blur(20px)",
-          borderTop    : "1px solid rgba(255,255,255,0.05)",
-          flexShrink   : 0,
-          zIndex       : 10
+          display      : "flex",
+          gap          : "10px",
+          alignItems   : "flex-end",
+          background   : "rgba(255,255,255,0.04)",
+          border       : "1px solid rgba(255,255,255,0.08)",
+          borderRadius : "20px",
+          padding      : "8px 8px 8px 16px",
+          transition   : "all 0.2s",
+          boxShadow    : "0 8px 32px rgba(0,0,0,0.3)"
         }}>
-          {/* Agent pill */}
-          <div style={{
-            display    : "flex",
-            alignItems : "center",
-            gap        : "6px",
-            marginBottom: "10px"
-          }}>
-            <div style={{
-              width       : "6px",
-              height      : "6px",
-              borderRadius: "50%",
-              background  : currentMeta.color,
-              boxShadow   : `0 0 6px ${currentMeta.color}`
-            }} />
-            <span style={{
-              fontSize:"0.65rem",
-              color:"rgba(255,255,255,0.3)",
-              fontWeight:"500"
-            }}>
-              {currentMeta.label}
-              {character && ` · ${character.name}`}
-            </span>
-          </div>
+          {/* + button */}
+          <button onClick={() => setResumeOpen(true)} style={{
+            width       : "36px",
+            height      : "36px",
+            borderRadius: "12px",
+            background  : "rgba(255,255,255,0.06)",
+            border      : "1px solid rgba(255,255,255,0.08)",
+            color       : "rgba(255,255,255,0.4)",
+            cursor      : "pointer",
+            display     : "flex",
+            alignItems  : "center",
+            justifyContent: "center",
+            flexShrink  : 0,
+            transition  : "all 0.2s"
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.background  = `${accentColor}15`;
+            e.currentTarget.style.borderColor = `${accentColor}40`;
+            e.currentTarget.style.color       = accentColor;
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.background  = "rgba(255,255,255,0.06)";
+            e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)";
+            e.currentTarget.style.color       = "rgba(255,255,255,0.4)";
+          }}
+          title="Career Assistant">
+            <Plus size={15} />
+          </button>
 
-          {/* Input box */}
-          <div style={{
-            display      : "flex",
-            gap          : "10px",
-            alignItems   : "flex-end",
-            background   : "rgba(255,255,255,0.04)",
-            border       : "1px solid rgba(255,255,255,0.08)",
-            borderRadius : "20px",
-            padding      : "8px 8px 8px 16px",
-            transition   : "all 0.2s",
-            boxShadow    : "0 8px 32px rgba(0,0,0,0.3)"
-          }}>
-            {/* + button */}
-            <button onClick={() => setResumeOpen(true)} style={{
-              width       : "36px",
-              height      : "36px",
-              borderRadius: "12px",
-              background  : "rgba(255,255,255,0.06)",
-              border      : "1px solid rgba(255,255,255,0.08)",
-              color       : "rgba(255,255,255,0.4)",
-              cursor      : "pointer",
-              display     : "flex",
-              alignItems  : "center",
+          {/* Textarea */}
+          <textarea
+            ref={inputRef}
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={handleKey}
+            placeholder={character
+              ? `Ask ${character.name} anything...`
+              : "Ask FRIDAY anything..."}
+            rows={1}
+            style={{
+              flex      : 1,
+              background: "transparent",
+              border    : "none",
+              color     : "#fff",
+              fontSize  : "0.92rem",
+              outline   : "none",
+              resize    : "none",
+              fontFamily: "Inter, sans-serif",
+              lineHeight: "1.5",
+              padding   : "6px 0",
+              maxHeight : "120px"
+            }}
+            onInput={e => {
+              e.target.style.height = "auto";
+              e.target.style.height =
+                Math.min(e.target.scrollHeight, 120) + "px";
+            }}
+          />
+
+          {/* Send button */}
+          <button
+            onClick={sendMessage}
+            disabled={loading || !input.trim()}
+            style={{
+              width        : "38px",
+              height       : "38px",
+              borderRadius : "14px",
+              background   : loading || !input.trim()
+                ? "rgba(255,255,255,0.05)"
+                : `linear-gradient(135deg, ${accentColor}, #ff9a6b)`,
+              border       : "none",
+              cursor       : loading || !input.trim()
+                ? "not-allowed" : "pointer",
+              display      : "flex",
+              alignItems   : "center",
               justifyContent: "center",
-              flexShrink  : 0,
-              transition  : "all 0.2s"
+              boxShadow    : loading || !input.trim()
+                ? "none"
+                : `0 4px 15px ${accentGlow}`,
+              flexShrink   : 0,
+              transition   : "all 0.2s"
             }}
             onMouseEnter={e => {
-              e.currentTarget.style.background  = `${accentColor}15`;
-              e.currentTarget.style.borderColor = `${accentColor}40`;
-              e.currentTarget.style.color       = accentColor;
+              if (!loading && input.trim()) {
+                e.currentTarget.style.transform = "scale(1.08)";
+                e.currentTarget.style.boxShadow =
+                  `0 6px 20px ${accentGlow}`;
+              }
             }}
             onMouseLeave={e => {
-              e.currentTarget.style.background  = "rgba(255,255,255,0.06)";
-              e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)";
-              e.currentTarget.style.color       = "rgba(255,255,255,0.4)";
+              e.currentTarget.style.transform = "scale(1)";
             }}
-            title="Career Assistant">
-              <Plus size={15} />
-            </button>
-
-            {/* Textarea */}
-            <textarea
-              ref={inputRef}
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={handleKey}
-              placeholder={character
-                ? `Ask ${character.name} anything...`
-                : "Ask FRIDAY anything..."}
-              rows={1}
-              style={{
-                flex      : 1,
-                background: "transparent",
-                border    : "none",
-                color     : "#fff",
-                fontSize  : "0.92rem",
-                outline   : "none",
-                resize    : "none",
-                fontFamily: "Inter, sans-serif",
-                lineHeight: "1.5",
-                padding   : "6px 0",
-                maxHeight : "120px"
-              }}
-              onInput={e => {
-                e.target.style.height = "auto";
-                e.target.style.height =
-                  Math.min(e.target.scrollHeight, 120) + "px";
-              }}
-            />
-
-            {/* Send button */}
-            <button
-              onClick={sendMessage}
-              disabled={loading || !input.trim()}
-              style={{
-                width        : "38px",
-                height       : "38px",
-                borderRadius : "14px",
-                background   : loading || !input.trim()
-                  ? "rgba(255,255,255,0.05)"
-                  : `linear-gradient(135deg, ${accentColor}, #ff9a6b)`,
-                border       : "none",
-                cursor       : loading || !input.trim()
-                  ? "not-allowed" : "pointer",
-                display      : "flex",
-                alignItems   : "center",
-                justifyContent: "center",
-                boxShadow    : loading || !input.trim()
-                  ? "none"
-                  : `0 4px 15px ${accentGlow}`,
-                flexShrink   : 0,
-                transition   : "all 0.2s"
-              }}
-              onMouseEnter={e => {
-                if (!loading && input.trim()) {
-                  e.currentTarget.style.transform = "scale(1.08)";
-                  e.currentTarget.style.boxShadow =
-                    `0 6px 20px ${accentGlow}`;
-                }
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.transform = "scale(1)";
-              }}
-            >
-              <Send size={14}
-                color={loading || !input.trim()
-                  ? "rgba(255,255,255,0.2)" : "#fff"} />
-            </button>
-          </div>
-
-          <p style={{
-            fontSize : "0.6rem",
-            color    : "rgba(255,255,255,0.12)",
-            textAlign: "center",
-            marginTop: "8px"
-          }}>
-            Enter to send · Shift+Enter for new line
-          </p>
+          >
+            <Send size={14}
+              color={loading || !input.trim()
+                ? "rgba(255,255,255,0.2)" : "#fff"} />
+          </button>
         </div>
+
+        <p style={{
+          fontSize : "0.6rem",
+          color    : "rgba(255,255,255,0.12)",
+          textAlign: "center",
+          marginTop: "8px"
+        }}>
+          Enter to send · Shift+Enter for new line
+        </p>
       </div>
 
       {/* Resume Panel */}
