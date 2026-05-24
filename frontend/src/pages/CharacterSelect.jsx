@@ -59,7 +59,7 @@ const CharacterSelect = () => {
       duration: 0.5,
       delay   : 0.9,
       ease    : "power2.in",
-      onComplete: () => navigate("/login")
+      onComplete: () => navigate("/dashboard")
     });
   };
 
