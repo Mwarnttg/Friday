@@ -28,7 +28,7 @@ const parseInline = (text) => {
       const before = remaining.slice(0, boldMatch.index);
       if (before) parts.push(<span key={key++}>{before}</span>);
       parts.push(
-        <strong key={key++} style={{ color:"black", fontWeight:"600" }}>
+        <strong key={key++} style={{ color:"#fff", fontWeight:"600" }}>
           {boldMatch[1]}
         </strong>
       );
@@ -41,7 +41,7 @@ const parseInline = (text) => {
       if (before) parts.push(<span key={key++}>{before}</span>);
       parts.push(
         <code key={key++} style={{
-          background  : "rgba(255,255,255,0.1)",
+          background  : "rgba(255,255,255,0.12)",
           color       : "#e2e8f0",
           padding     : "1px 6px",
           borderRadius: "4px",
@@ -60,7 +60,7 @@ const parseInline = (text) => {
   return parts;
 };
 
-const CopyButton = ({ text, dark = false }) => {
+const CopyButton = ({ text }) => {
   const [copied, setCopied] = useState(false);
   return (
     <button
@@ -76,7 +76,7 @@ const CopyButton = ({ text, dark = false }) => {
         padding    : "5px 12px",
         background : copied
           ? "rgba(34,197,94,0.15)"
-          : dark ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.08)",
+          : "rgba(255,255,255,0.1)",
         border     : copied
           ? "1px solid rgba(34,197,94,0.3)"
           : "1px solid rgba(255,255,255,0.15)",
@@ -103,7 +103,6 @@ const CodeBox = ({ code, language }) => (
     border      : "1px solid rgba(255,255,255,0.1)",
     boxShadow   : "0 8px 32px rgba(0,0,0,0.4)"
   }}>
-    {/* Header bar */}
     <div style={{
       padding       : "10px 16px",
       background    : "#1e1e2e",
@@ -113,7 +112,6 @@ const CodeBox = ({ code, language }) => (
       borderBottom  : "1px solid rgba(255,255,255,0.07)"
     }}>
       <div style={{ display:"flex", alignItems:"center", gap:"12px" }}>
-        {/* macOS dots */}
         <div style={{ display:"flex", gap:"6px" }}>
           {["#ff5f57","#febc2e","#28c840"].map((c, idx) => (
             <div key={idx} style={{
@@ -134,10 +132,9 @@ const CodeBox = ({ code, language }) => (
           </span>
         )}
       </div>
-      <CopyButton text={code} dark />
+      <CopyButton text={code} />
     </div>
 
-    {/* Code body */}
     <div style={{
       background: "#161622",
       padding   : "18px 0",
@@ -200,12 +197,12 @@ const parseTable = (lines) => {
         width:"100%", borderCollapse:"collapse", fontSize:"0.96rem"
       }}>
         <thead>
-          <tr style={{ background:"rgba(255,255,255,0.08)" }}>
+          <tr style={{ background:"#1e1e2e" }}>
             {headers.map((h,i) => (
               <th key={i} style={{
                 padding      : "12px 16px",
                 textAlign    : "left",
-                color        : "#fff",
+                color        : "rgba(255,255,255,0.9)",
                 fontWeight   : "600",
                 fontSize     : "0.88rem",
                 letterSpacing: "0.04rem",
@@ -217,7 +214,7 @@ const parseTable = (lines) => {
         <tbody>
           {body.map((row,i) => (
             <tr key={i} style={{
-              background: i%2===0 ? "transparent" : "rgba(255,255,255,0.02)"
+              background: i%2===0 ? "#161622" : "#1a1a2e"
             }}>
               {row.map((cell,j) => (
                 <td key={j} style={{
@@ -239,71 +236,114 @@ const parseTable = (lines) => {
   );
 };
 
-// ── WHITE CONTENT BOX (email/letter) ──
+// ── CONTENT BOX (email/letter) ──
 const ContentBox = ({ content, title }) => (
   <div style={{
     background  : "#161622",
     borderRadius: "16px",
     overflow    : "hidden",
     margin      : "12px 0",
-    boxShadow   : "0 4px 24px rgba(0,0,0,0.2)"
+    boxShadow   : "0 8px 32px rgba(0,0,0,0.4)",
+    border      : "1px solid rgba(255,255,255,0.08)"
   }}>
+    {/* Header */}
     <div style={{
-      padding       : "12px 18px",
-      background    : "#f5f5f7",
-      borderBottom  : "1px solid rgba(0,0,0,0.08)",
+      padding       : "10px 16px",
+      background    : "#1e1e2e",
+      borderBottom  : "1px solid rgba(255,255,255,0.07)",
       display       : "flex",
       alignItems    : "center",
       justifyContent: "space-between"
     }}>
-      <p style={{
-        fontSize     : "0.82rem",
-        fontWeight   : "600",
-        color        : "#86868b",
-        margin       : 0,
-        letterSpacing: "0.08rem",
-        textTransform: "uppercase"
-      }}>
-        {title || "Content"}
-      </p>
+      <div style={{ display:"flex", alignItems:"center", gap:"12px" }}>
+        {/* macOS dots */}
+        <div style={{ display:"flex", gap:"6px" }}>
+          {["#ff5f57","#febc2e","#28c840"].map((c,idx) => (
+            <div key={idx} style={{
+              width:"11px", height:"11px",
+              borderRadius:"50%", background:c
+            }} />
+          ))}
+        </div>
+        <p style={{
+          fontSize     : "0.78rem",
+          fontWeight   : "600",
+          color        : "rgba(255,255,255,0.4)",
+          margin       : 0,
+          letterSpacing: "0.08rem",
+          textTransform: "uppercase",
+          fontFamily   : "Inter, sans-serif"
+        }}>
+          {title || "Content"}
+        </p>
+      </div>
       <CopyButton text={content} />
     </div>
+
+    {/* Body */}
     <div style={{ padding:"18px 20px", background:"#161622" }}>
       {content.split('\n').map((line, i) => {
         const t = line.trim();
         if (!t) return <div key={i} style={{ height:"8px" }} />;
+
         if (t.match(/^---+$/)) return (
           <hr key={i} style={{
-            border:"none", borderTop:"1px solid #e5e5e7", margin:"12px 0"
+            border   : "none",
+            borderTop: "1px solid rgba(255,255,255,0.08)",
+            margin   : "12px 0"
           }} />
         );
+
         if (t.toLowerCase().startsWith('subject:')) return (
           <p key={i} style={{
-            fontSize:"1rem", fontWeight:"700", color:"#1d1d1f",
-            margin:"0 0 12px", paddingBottom:"10px",
-            borderBottom:"1px solid #e5e5e7"
+            fontSize    : "1rem",
+            fontWeight  : "700",
+            color       : "#e2e8f0",
+            margin      : "0 0 12px",
+            paddingBottom: "10px",
+            borderBottom: "1px solid rgba(255,255,255,0.1)"
           }}>{t}</p>
         );
+
         if (t.startsWith('**') && t.endsWith('**')) return (
           <p key={i} style={{
             fontSize:"1rem", fontWeight:"700",
-            color:"#1d1d1f", margin:"8px 0"
+            color:"#e2e8f0", margin:"8px 0"
           }}>{t.replace(/\*\*/g,'')}</p>
         );
+
         if (t.startsWith('- ') || t.startsWith('• ')) return (
-          <div key={i} style={{ display:"flex", gap:"8px", marginBottom:"6px" }}>
-            <span style={{ color:"#555", flexShrink:0 }}>•</span>
+          <div key={i} style={{
+            display:"flex", gap:"10px", marginBottom:"7px",
+            alignItems:"flex-start"
+          }}>
+            <span style={{
+              color    : "rgba(255,255,255,0.4)",
+              flexShrink: 0,
+              fontSize : "1rem",
+              marginTop: "1px"
+            }}>•</span>
             <p style={{
-              fontSize:"0.98rem", color:"#fff",
-              margin:0, lineHeight:"1.65"
-            }}>{t.slice(2)}</p>
+              fontSize  : "0.98rem",
+              color     : "rgba(255,255,255,0.82)",
+              margin    : 0,
+              lineHeight: "1.7"
+            }}>
+              {parseInline(t.slice(2))}
+            </p>
           </div>
         );
+
         return (
           <p key={i} style={{
-            fontSize:"0.98rem", color:"#fff",
-            margin:"0 0 5px", lineHeight:"1.75"
-          }}>{t}</p>
+            fontSize  : "0.98rem",
+            color     : "rgba(255,255,255,0.82)",
+            margin    : "0 0 6px",
+            lineHeight: "1.75",
+            fontFamily: "Inter, sans-serif"
+          }}>
+            {parseInline(t)}
+          </p>
         );
       })}
     </div>
@@ -377,26 +417,37 @@ const NumberedItem = ({ num, text, accentColor }) => (
 // ── INFO CARD ──
 const InfoCard = ({ items, accentColor }) => (
   <div style={{
-    background:"rgba(255,255,255,0.05)",
-    border:"1px solid rgba(255,255,255,0.09)",
-    borderRadius:"14px", padding:"14px 16px", margin:"10px 0"
+    background  : "#161622",
+    border      : "1px solid rgba(255,255,255,0.09)",
+    borderRadius: "14px",
+    padding     : "14px 16px",
+    margin      : "10px 0",
+    boxShadow   : "0 4px 16px rgba(0,0,0,0.3)"
   }}>
     {items.map((item,i) => (
       <div key={i} style={{
-        display:"flex", justifyContent:"space-between",
-        alignItems:"flex-start", padding:"8px 0", gap:"14px",
-        borderBottom: i<items.length-1
+        display       : "flex",
+        justifyContent: "space-between",
+        alignItems    : "flex-start",
+        padding       : "8px 0",
+        gap           : "14px",
+        borderBottom  : i<items.length-1
           ? "1px solid rgba(255,255,255,0.06)" : "none"
       }}>
         <span style={{
-          fontSize:"0.88rem", color:accentColor,
-          fontWeight:"600", flexShrink:0, opacity:0.9
+          fontSize  : "0.88rem",
+          color     : accentColor,
+          fontWeight: "600",
+          flexShrink: 0,
+          opacity   : 0.9
         }}>
           {item.key}
         </span>
         <span style={{
-          fontSize:"0.96rem", color:"rgba(255,255,255,0.75)",
-          textAlign:"right", lineHeight:"1.5"
+          fontSize  : "0.96rem",
+          color     : "rgba(255,255,255,0.78)",
+          textAlign : "right",
+          lineHeight: "1.5"
         }}>
           {parseInline(item.value)}
         </span>
@@ -408,14 +459,19 @@ const InfoCard = ({ items, accentColor }) => (
 // ── TIP BOX ──
 const TipBox = ({ text, accentColor }) => (
   <div style={{
-    background:`${accentColor}10`,
-    border:`1px solid ${accentColor}25`,
-    borderLeft:`4px solid ${accentColor}`,
-    borderRadius:"10px", padding:"12px 16px", margin:"8px 0"
+    background  : "#161622",
+    border      : `1px solid ${accentColor}30`,
+    borderLeft  : `4px solid ${accentColor}`,
+    borderRadius: "10px",
+    padding     : "12px 16px",
+    margin      : "8px 0",
+    boxShadow   : "0 4px 16px rgba(0,0,0,0.2)"
   }}>
     <p style={{
-      fontSize:"0.96rem", color:"rgba(255,255,255,0.8)",
-      margin:0, lineHeight:"1.65"
+      fontSize  : "0.96rem",
+      color     : "rgba(255,255,255,0.82)",
+      margin    : 0,
+      lineHeight: "1.65"
     }}>
       {parseInline(text)}
     </p>
@@ -459,7 +515,6 @@ const MessageRenderer = ({ content, accentColor = "#FF6B2B" }) => {
     const line    = lines[i];
     const trimmed = line.trim();
 
-    // Empty line
     if (!trimmed) {
       if (inEmail) { emailLines.push(''); }
       else {
@@ -474,23 +529,18 @@ const MessageRenderer = ({ content, accentColor = "#FF6B2B" }) => {
     if (trimmed.startsWith('```')) {
       flushInfo();
       if (inEmail) flushEmail("Email");
-
       const lang      = trimmed.slice(3).trim();
       const codeLines = [];
       i++;
-
       while (i < lines.length && !lines[i].trim().startsWith('```')) {
         codeLines.push(lines[i]);
         i++;
       }
-      i++; // skip closing ```
-
+      i++;
       elements.push(
-        <CodeBox
-          key={`code-${i}`}
+        <CodeBox key={`code-${i}`}
           code={codeLines.join('\n')}
-          language={lang || null}
-        />
+          language={lang || null} />
       );
       continue;
     }
