@@ -142,7 +142,7 @@ const Dashboard = () => {
   const logout          = () => { localStorage.clear(); navigate("/login"); };
   const changeCharacter = () => navigate("/select");
   const currentMeta     = AGENT_META[activeAgent] || AGENT_META.auto;
-  const ActiveIcon      = currentMeta.icon;
+
   const accentColor     = character?.color || "#FF6B2B";
   const accentGlow      = character?.glow  || "rgba(255,107,43,0.4)";
 
