@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import ResumePanel from "../components/ResumePanel";
 
-const API = "http://127.0.0.1:8000";
+const API = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
 
 const AGENT_META = {
   auto      : { icon: Zap,           label: "Auto",      color: "#ffffff" },
