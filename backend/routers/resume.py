@@ -35,333 +35,359 @@ class InterviewPrepRequest(BaseModel):
 # In-memory store
 resume_store = {}
 
+
 def create_pdf(resume_text: str, analysis: dict = None,
                title: str = "Resume") -> bytes:
-    """Create a beautifully formatted PDF resume"""
-    try:
-        from reportlab.lib.pagesizes import letter
-        from reportlab.lib.styles   import getSampleStyleSheet, ParagraphStyle
-        from reportlab.platypus     import (SimpleDocTemplate, Paragraph,
-                                            Spacer, HRFlowable)
-        from reportlab.lib.units    import inch
-        from reportlab.lib          import colors
-        from reportlab.lib.enums    import TA_LEFT, TA_CENTER
+    """Create beautiful B&W classic resume PDF using xhtml2pdf"""
+    import io as _io
+    from xhtml2pdf import pisa
 
-        buffer = io.BytesIO()
-        doc    = SimpleDocTemplate(
-            buffer,
-            pagesize     = letter,
-            rightMargin  = 0.6 * inch,
-            leftMargin   = 0.6 * inch,
-            topMargin    = 0.5 * inch,
-            bottomMargin = 0.5 * inch
-        )
+    # ── Parse resume into sections ──
+    lines    = resume_text.replace('|', '\n').split('\n')
+    sections = {}
+    current  = 'header'
+    sections['header'] = []
 
-        ORANGE = colors.HexColor('#FF6B2B')
-        DARK   = colors.HexColor('#1a1a1a')
-        GRAY   = colors.HexColor('#555555')
-        LINE   = colors.HexColor('#eeeeee')
+    section_keywords = {
+        'PROFESSIONAL SUMMARY': 'summary',
+        'SUMMARY'             : 'summary',
+        'OBJECTIVE'           : 'summary',
+        'TECHNICAL SKILLS'    : 'skills',
+        'SKILLS'              : 'skills',
+        'WORK EXPERIENCE'     : 'experience',
+        'EXPERIENCE'          : 'experience',
+        'EMPLOYMENT'          : 'experience',
+        'PROJECTS'            : 'projects',
+        'EDUCATION'           : 'education',
+        'CERTIFICATIONS'      : 'certifications',
+        'ACHIEVEMENTS'        : 'achievements',
+        'AWARDS'              : 'achievements'
+    }
 
-        name_style = ParagraphStyle(
-            'Name',
-            fontName  = 'Helvetica-Bold',
-            fontSize  = 22,
-            textColor = DARK,
-            spaceAfter= 4,
-            alignment = TA_LEFT
-        )
-        contact_style = ParagraphStyle(
-            'Contact',
-            fontName  = 'Helvetica',
-            fontSize  = 9,
-            textColor = GRAY,
-            spaceAfter= 2
-        )
-        section_style = ParagraphStyle(
-            'Section',
-            fontName    = 'Helvetica-Bold',
-            fontSize    = 10,
-            textColor   = ORANGE,
-            spaceBefore = 14,
-            spaceAfter  = 4
-        )
-        job_title_style = ParagraphStyle(
-            'JobTitle',
-            fontName  = 'Helvetica-Bold',
-            fontSize  = 10,
-            textColor = DARK,
-            spaceAfter= 1
-        )
-        company_style = ParagraphStyle(
-            'Company',
-            fontName  = 'Helvetica-Oblique',
-            fontSize  = 9,
-            textColor = GRAY,
-            spaceAfter= 4
-        )
-        bullet_style = ParagraphStyle(
-            'Bullet',
-            fontName   = 'Helvetica',
-            fontSize   = 9,
-            textColor  = DARK,
-            spaceAfter = 3,
-            leftIndent = 12
-        )
-        body_style = ParagraphStyle(
-            'Body',
-            fontName  = 'Helvetica',
-            fontSize  = 9,
-            textColor = DARK,
-            spaceAfter= 4,
-            leading   = 14
-        )
-        footer_style = ParagraphStyle(
-            'Footer',
-            fontName  = 'Helvetica-Oblique',
-            fontSize  = 7,
-            textColor = colors.HexColor('#aaaaaa'),
-            alignment = TA_CENTER
-        )
-
-        content = []
-
-        lines    = resume_text.replace('|', '\n').split('\n')
-        sections = {}
-        current  = 'header'
-        sections['header'] = []
-
-        section_keywords = {
-            'PROFESSIONAL SUMMARY': 'summary',
-            'SUMMARY'             : 'summary',
-            'OBJECTIVE'           : 'summary',
-            'TECHNICAL SKILLS'    : 'skills',
-            'SKILLS'              : 'skills',
-            'WORK EXPERIENCE'     : 'experience',
-            'EXPERIENCE'          : 'experience',
-            'EMPLOYMENT'          : 'experience',
-            'PROJECTS'            : 'projects',
-            'EDUCATION'           : 'education',
-            'CERTIFICATIONS'      : 'certifications',
-            'ACHIEVEMENTS'        : 'achievements',
-            'AWARDS'              : 'achievements'
-        }
-
-        for line in lines:
-            stripped   = line.strip()
-            line_upper = stripped.upper()
-            matched    = False
-            for keyword, sec_name in section_keywords.items():
-                if keyword in line_upper and len(stripped) < 50:
-                    current = sec_name
-                    if current not in sections:
-                        sections[current] = []
-                    matched = True
-                    break
-            if not matched and stripped:
+    for line in lines:
+        stripped   = line.strip()
+        line_upper = stripped.upper()
+        matched    = False
+        for keyword, sec_name in section_keywords.items():
+            if keyword in line_upper and len(stripped) < 50:
+                current = sec_name
                 if current not in sections:
                     sections[current] = []
-                sections[current].append(stripped)
-
-        # HEADER
-        header_lines = sections.get('header', [])
-        name = ""
-        for line in header_lines:
-            if line and len(line) > 2:
-                name = (line
-                    .replace('— Improved Resume', '')
-                    .replace('- Improved Resume', '')
-                    .strip()
-                )
+                matched = True
                 break
-        if not name and analysis:
-            name = analysis.get('name', 'Professional')
+        if not matched and stripped:
+            if current not in sections:
+                sections[current] = []
+            sections[current].append(stripped)
 
-        content.append(Paragraph(name or "Resume", name_style))
-
-        contact_parts = []
-        for line in header_lines[1:6]:
-            if line and len(line) > 3:
-                contact_parts.append(line)
-        if contact_parts:
-            contact_text = "  ·  ".join(contact_parts[:4])
-            contact_text = (contact_text
-                .replace('&', '&amp;')
-                .replace('<', '&lt;')
-                .replace('>', '&gt;')
+    # ── Name + contact ──
+    header_lines = sections.get('header', [])
+    name = ""
+    for line in header_lines:
+        if line and len(line) > 2:
+            name = (line
+                .replace('— Improved Resume', '')
+                .replace('- Improved Resume', '')
+                .strip()
             )
-            content.append(Paragraph(contact_text, contact_style))
+            break
+    if not name and analysis:
+        name = analysis.get('name', 'Resume')
 
-        content.append(Spacer(1, 6))
-        content.append(HRFlowable(
-            width="100%", thickness=2,
-            color=ORANGE, spaceAfter=8
-        ))
+    contact_parts = []
+    for line in header_lines[1:6]:
+        if line and len(line) > 3:
+            contact_parts.append(line)
+    contact_text = "  ·  ".join(contact_parts[:5])
 
-        def add_section(sec_key, sec_label):
-            if sec_key not in sections or not sections[sec_key]:
-                return
-            content.append(Paragraph(sec_label, section_style))
-            content.append(HRFlowable(
-                width="100%", thickness=0.5,
-                color=LINE, spaceAfter=6
-            ))
+    # ── HTML escape ──
+    def esc(text):
+        return (str(text)
+            .replace('&', '&amp;')
+            .replace('<', '&lt;')
+            .replace('>', '&gt;')
+            .replace('"', '&quot;')
+        )
 
-        # SUMMARY
-        if 'summary' in sections and sections['summary']:
-            add_section('summary', 'PROFESSIONAL SUMMARY')
-            summary_text = ' '.join(sections['summary'])
-            safe = (summary_text
-                .replace('&', '&amp;')
-                .replace('<', '&lt;')
-                .replace('>', '&gt;')
-            )
-            content.append(Paragraph(safe, body_style))
+    # ── Render section ──
+    def render_section(label, lines_list):
+        if not lines_list:
+            return ""
 
-        # SKILLS
-        if 'skills' in sections and sections['skills']:
-            add_section('skills', 'TECHNICAL SKILLS')
-            for line in sections['skills']:
-                if not line:
-                    continue
-                safe = (line
-                    .replace('&', '&amp;')
-                    .replace('<', '&lt;')
-                    .replace('>', '&gt;')
+        role_words   = [
+            'developer','engineer','manager','designer',
+            'analyst','lead','director','intern',
+            'coordinator','architect','consultant','specialist',
+            'programmer','administrator','officer','executive'
+        ]
+        action_verbs = [
+            'implemented','developed','built','created',
+            'managed','led','designed','optimized',
+            'architected','deployed','collaborated','executed',
+            'enhanced','integrated','improved','delivered',
+            'engineered','established','launched','reduced',
+            'increased','achieved','streamlined','automated',
+            'maintained','supported','worked','utilized','spearheaded',
+            'directed','oversaw','coordinated','produced','drove'
+        ]
+        degree_words = [
+            'diploma','degree','bachelor','master','phd',
+            'certificate','bsc','msc','b.tech','mba',
+            'b.sc','b.eng','m.eng','honours','associates'
+        ]
+
+        html = f"""
+        <div class="section">
+            <div class="section-header">{label}</div>
+            <div class="section-line"></div>
+            <div class="section-body">
+        """
+
+        for line in lines_list:
+            if not line.strip():
+                continue
+            safe       = esc(line.strip())
+            line_lower = line.lower()
+
+            # Job title line
+            if (('—' in line or '–' in line or '-' in line) and
+                 any(w in line_lower for w in role_words) and
+                 len(line) < 140):
+                html += f'<p class="job-title">{safe}</p>'
+
+            # Degree line
+            elif (label == 'EDUCATION' and
+                  any(w in line_lower for w in degree_words)):
+                html += f'<p class="job-title">{safe}</p>'
+
+            # Skills with colon
+            elif label == 'TECHNICAL SKILLS' and ':' in line:
+                parts = line.split(':', 1)
+                html += (
+                    f'<p class="skill-line">'
+                    f'<strong>{esc(parts[0])}:</strong>'
+                    f' {esc(parts[1])}</p>'
                 )
-                if ':' in safe:
-                    parts      = safe.split(':', 1)
-                    skill_text = f"<b>{parts[0]}:</b>{parts[1]}"
-                else:
-                    skill_text = safe
-                content.append(Paragraph(skill_text, body_style))
 
-        # EXPERIENCE
-        if 'experience' in sections and sections['experience']:
-            add_section('experience', 'EXPERIENCE')
-            role_words = [
-                'developer', 'engineer', 'manager', 'designer',
-                'analyst', 'lead', 'director', 'intern',
-                'coordinator', 'architect', 'consultant'
-            ]
-            company_words = [
-                'ltd', 'inc', 'corp', 'solutions', 'technologies',
-                'tartigrade', 'pvt', 'company', 'group', 'services'
-            ]
-            action_verbs = [
-                'implemented', 'developed', 'built', 'created',
-                'managed', 'led', 'designed', 'optimized',
-                'architected', 'deployed', 'collaborated', 'executed',
-                'enhanced', 'integrated', 'improved', 'delivered'
-            ]
-            for line in sections['experience']:
-                if not line:
-                    continue
-                safe = (line
-                    .replace('&', '&amp;')
-                    .replace('<', '&lt;')
-                    .replace('>', '&gt;')
-                )
-                line_lower = line.lower()
-                if (('—' in line or '–' in line or '-' in line) and
-                     any(w in line_lower for w in role_words) and
-                     len(line) < 100):
-                    content.append(Spacer(1, 4))
-                    content.append(Paragraph(safe, job_title_style))
-                elif any(w in line_lower for w in company_words):
-                    content.append(Paragraph(safe, company_style))
-                elif line.startswith('•') or line.startswith('-'):
-                    clean = safe.lstrip('•- ').strip()
-                    content.append(Paragraph(f"• {clean}", bullet_style))
-                elif any(v in line_lower for v in action_verbs):
-                    content.append(Paragraph(f"• {safe}", bullet_style))
-                else:
-                    content.append(Paragraph(safe, body_style))
+            # Bullet points
+            elif (line.strip().startswith('•') or
+                  line.strip().startswith('-') or
+                  any(v in line_lower for v in action_verbs)):
+                clean = line.strip().lstrip('•- ').strip()
+                html += f'<p class="bullet">&#8226; {esc(clean)}</p>'
 
-        # PROJECTS
-        if 'projects' in sections and sections['projects']:
-            add_section('projects', 'PROJECTS')
-            action_verbs = ['built', 'developed', 'implemented',
-                           'created', 'designed']
-            for line in sections['projects']:
-                if not line:
-                    continue
-                safe = (line
-                    .replace('&', '&amp;')
-                    .replace('<', '&lt;')
-                    .replace('>', '&gt;')
-                )
-                if '(' in line and ')' in line and len(line) < 60:
-                    content.append(Spacer(1, 4))
-                    content.append(Paragraph(
-                        f"<b>{safe}</b>", job_title_style))
-                elif (line.startswith('•') or line.startswith('-') or
-                      any(v in line.lower() for v in action_verbs)):
-                    clean = safe.lstrip('•- ').strip()
-                    content.append(Paragraph(f"• {clean}", bullet_style))
-                else:
-                    content.append(Paragraph(safe, body_style))
+            # Project title
+            elif (label == 'PROJECTS' and
+                  '(' in line and ')' in line and
+                  len(line) < 100):
+                html += f'<p class="job-title">{safe}</p>'
 
-        # EDUCATION
-        if 'education' in sections and sections['education']:
-            add_section('education', 'EDUCATION')
-            degree_words = [
-                'diploma', 'degree', 'bachelor', 'master',
-                'phd', 'certificate', 'bsc', 'msc', 'b.tech',
-                'b.e', 'm.tech', 'mba'
-            ]
-            for line in sections['education']:
-                if not line:
-                    continue
-                safe = (line
-                    .replace('&', '&amp;')
-                    .replace('<', '&lt;')
-                    .replace('>', '&gt;')
-                )
-                if any(w in line.lower() for w in degree_words):
-                    content.append(Paragraph(
-                        f"<b>{safe}</b>", job_title_style))
-                else:
-                    content.append(Paragraph(safe, body_style))
+            # Certification bullet
+            elif label == 'CERTIFICATIONS':
+                html += f'<p class="bullet">&#8226; {safe}</p>'
 
-        # CERTIFICATIONS
-        if 'certifications' in sections and sections['certifications']:
-            add_section('certifications', 'CERTIFICATIONS')
-            for line in sections['certifications']:
-                if line:
-                    safe = (line
-                        .replace('&', '&amp;')
-                        .replace('<', '&lt;')
-                        .replace('>', '&gt;')
-                    )
-                    content.append(Paragraph(f"• {safe}", bullet_style))
+            # Regular line
+            else:
+                html += f'<p class="body-text">{safe}</p>'
 
-        # ACHIEVEMENTS
-        if 'achievements' in sections and sections['achievements']:
-            add_section('achievements', 'ACHIEVEMENTS')
-            for line in sections['achievements']:
-                if line:
-                    safe = (line
-                        .replace('&', '&amp;')
-                        .replace('<', '&lt;')
-                        .replace('>', '&gt;')
-                    )
-                    content.append(Paragraph(f"• {safe}", bullet_style))
+        html += "</div></div>"
+        return html
 
-        # FOOTER
-        content.append(Spacer(1, 20))
-        content.append(HRFlowable(
-            width="100%", thickness=1,
-            color=LINE, spaceAfter=4
-        ))
-        content.append(Paragraph(
-            "Generated by FRIDAY AI Platform", footer_style
-        ))
+    # ── Build sections HTML ──
+    sections_html = ""
 
-        doc.build(content)
-        return buffer.getvalue()
+    if sections.get('summary'):
+        summary_text = ' '.join(sections['summary'])
+        sections_html += f"""
+        <div class="section">
+            <div class="section-header">PROFESSIONAL SUMMARY</div>
+            <div class="section-line"></div>
+            <div class="section-body">
+                <p class="body-text">{esc(summary_text)}</p>
+            </div>
+        </div>
+        """
 
+    if sections.get('skills'):
+        sections_html += render_section(
+            'TECHNICAL SKILLS', sections['skills'])
+
+    if sections.get('experience'):
+        sections_html += render_section(
+            'EXPERIENCE', sections['experience'])
+
+    if sections.get('projects'):
+        sections_html += render_section(
+            'PROJECTS', sections['projects'])
+
+    if sections.get('education'):
+        sections_html += render_section(
+            'EDUCATION', sections['education'])
+
+    if sections.get('certifications'):
+        sections_html += render_section(
+            'CERTIFICATIONS', sections['certifications'])
+
+    if sections.get('achievements'):
+        sections_html += render_section(
+            'ACHIEVEMENTS', sections['achievements'])
+
+    # ── Full HTML ──
+    html_content = f"""<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  @page {{
+    size: letter;
+    margin: 0.55in 0.65in 0.55in 0.65in;
+  }}
+
+  * {{
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }}
+
+  body {{
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 9.5pt;
+    color: #1a1a1a;
+    line-height: 1.4;
+    background: white;
+  }}
+
+  /* ── HEADER ── */
+  .header {{
+    margin-bottom: 14pt;
+    padding-bottom: 12pt;
+    border-bottom: 3pt solid #000000;
+    text-align: left;
+  }}
+
+  .name {{
+    font-size: 26pt;
+    font-weight: bold;
+    color: #000000;
+    letter-spacing: 2pt;
+    margin-bottom: 5pt;
+    text-transform: uppercase;
+  }}
+
+  .contact {{
+    font-size: 8.5pt;
+    color: #555555;
+    line-height: 1.7;
+  }}
+
+  /* ── SECTION WRAPPER ── */
+  .section {{
+    margin-bottom: 13pt;
+  }}
+
+  /* ── SECTION HEADER ── */
+  .section-header {{
+    font-size: 11pt;
+    font-weight: bold;
+    color: #000000;
+    letter-spacing: 2.5pt;
+    text-transform: uppercase;
+    margin-bottom: 0pt;
+    padding-bottom: 3pt;
+  }}
+
+  /* ── SECTION DIVIDER ── */
+  .section-line {{
+    border: none;
+    border-top: 1.5pt solid #000000;
+    margin-top: 2pt;
+    margin-bottom: 6pt;
+  }}
+
+  .section-body {{
+    padding-left: 0pt;
+  }}
+
+  /* ── JOB TITLE ── */
+  .job-title {{
+    font-size: 10pt;
+    font-weight: bold;
+    color: #000000;
+    margin-top: 6pt;
+    margin-bottom: 2pt;
+  }}
+
+  /* ── BULLET ── */
+  .bullet {{
+    font-size: 9.5pt;
+    color: #222222;
+    margin-left: 14pt;
+    margin-bottom: 2.5pt;
+    line-height: 1.4;
+  }}
+
+  /* ── BODY TEXT ── */
+  .body-text {{
+    font-size: 9.5pt;
+    color: #222222;
+    margin-bottom: 3pt;
+    line-height: 1.45;
+  }}
+
+  /* ── SKILL LINE ── */
+  .skill-line {{
+    font-size: 9.5pt;
+    color: #222222;
+    margin-bottom: 3pt;
+    line-height: 1.45;
+  }}
+
+  .skill-line strong {{
+    color: #000000;
+    font-weight: bold;
+  }}
+
+  /* ── FOOTER ── */
+  .footer {{
+    margin-top: 16pt;
+    border-top: 0.5pt solid #cccccc;
+    padding-top: 5pt;
+    text-align: center;
+    font-size: 7pt;
+    color: #aaaaaa;
+    font-style: italic;
+  }}
+</style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="name">{esc(name)}</div>
+    <div class="contact">{esc(contact_text)}</div>
+  </div>
+
+  {sections_html}
+
+  <div class="footer">Generated by FRIDAY AI Platform</div>
+
+</body>
+</html>"""
+
+    # ── Convert to PDF ──
+    try:
+        buffer = _io.BytesIO()
+        result = pisa.CreatePDF(
+            html_content.encode('utf-8'),
+            dest    = buffer,
+            encoding= 'utf-8'
+        )
+        if result.err:
+            print(f"xhtml2pdf error: {result.err}")
+            return resume_text.encode('utf-8')
+        buffer.seek(0)
+        return buffer.read()
     except Exception as e:
-        print(f"PDF generation error: {e}")
+        print(f"PDF error: {e}")
         return resume_text.encode('utf-8')
 
 
@@ -556,7 +582,6 @@ async def get_job_matches(
     api_key = os.getenv("JSEARCH_API_KEY", "")
     source  = "ai"
 
-    # Try real jobs first
     if api_key and api_key not in ["your_key_here", ""]:
         try:
             jobs = get_real_jobs(
@@ -574,7 +599,6 @@ async def get_job_matches(
         except Exception as e:
             print(f"Real jobs failed: {e} — falling back to AI")
 
-    # Fallback to AI generated
     jobs = match_jobs(
         user_data["analysis"],
         user_data["preferences"]
