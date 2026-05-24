@@ -7,8 +7,7 @@ import axios                            from "axios";
 import {
   Search, Code, FileText, BarChart2, GraduationCap,
   Mail, Bug, Globe, BookOpen, Target, DollarSign,
-  Lightbulb, Zap, Send, LogOut, User, Clock,
-  ChevronRight, Plus, Briefcase
+  Lightbulb, Zap, Send, LogOut, User, Clock, Plus, Briefcase
 } from "lucide-react";
 import ResumePanel from "../components/ResumePanel";
 
