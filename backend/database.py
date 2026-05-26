@@ -24,4 +24,4 @@ def get_db():
     finally:
         db.close()
 
-print("✅ Database configured!")
+print("[OK] Database configured!")

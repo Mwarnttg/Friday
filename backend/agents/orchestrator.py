@@ -311,4 +311,4 @@ def run_agent(message     : str,
                       response.usage.output_tokens
     }
 
-print("✅ 12 Agents loaded and ready!")
+print("[OK] 12 Agents loaded and ready!")

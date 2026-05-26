@@ -80,7 +80,7 @@ def get_real_jobs(analysis: dict, preferences: dict) -> list:
                 "logo"            : job.get("employer_logo", None)
             })
 
-        print(f"✅ Found {len(formatted)} real jobs!")
+        print(f"[OK] Found {len(formatted)} real jobs!")
         return formatted
 
     except Exception as e:
@@ -304,4 +304,4 @@ Return ONLY the JSON."""
     return json.loads(raw)
 
 
-print("✅ Job Agent ready!")
+print("[OK] Job Agent ready!")

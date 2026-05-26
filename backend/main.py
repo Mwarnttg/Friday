@@ -53,4 +53,4 @@ def health():
         "database" : "connected"
     }
 
-print("✅ FRIDAY API ready!")
+print("[OK] FRIDAY API ready!")

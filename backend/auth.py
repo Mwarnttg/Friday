@@ -9,4 +9,4 @@ class GuestUser:
 def get_current_user():
     return GuestUser()
 
-print("✅ Auth system ready!")
+print("[OK] Auth system ready!")

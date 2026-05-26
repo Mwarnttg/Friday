@@ -403,4 +403,4 @@ Return ONLY valid JSON."""
             ]
         }
 
-print("✅ Resume Agent ready!")
+print("[OK] Resume Agent ready!")

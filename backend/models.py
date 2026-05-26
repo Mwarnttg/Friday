@@ -52,4 +52,4 @@ class AgentConfig(Base):
     custom_prompt= Column(Text)
     created_at   = Column(DateTime, default=datetime.utcnow)
 
-print("✅ Models ready!")
+print("[OK] Models ready!")

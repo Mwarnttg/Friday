@@ -60,4 +60,4 @@ def detect(message: str):
         "skills"    : agent["skills"]
     }
 
-print("✅ Chat Router ready!")
+print("[OK] Chat Router ready!")

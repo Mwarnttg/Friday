@@ -546,4 +546,4 @@ async def get_resume_status():
     }
 
 
-print("✅ Resume Router ready!")
+print("[OK] Resume Router ready!")
