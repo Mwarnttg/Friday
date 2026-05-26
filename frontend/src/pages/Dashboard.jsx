@@ -36,6 +36,7 @@ const Dashboard = () => {
   const [activeAgent, setActiveAgent] = useState("auto");
   const [character,   setCharacter]   = useState(null);
   const [resumeOpen,  setResumeOpen]  = useState(false);
+  const [isMobile,    setIsMobile]    = useState(window.innerWidth <= 640);
   const chatEndRef = useRef(null);
   const inputRef   = useRef(null);
   const headerRef  = useRef(null);
@@ -126,6 +127,12 @@ const Dashboard = () => {
     }
   };
 
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth <= 640);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
   const handleKey = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -176,17 +183,24 @@ const Dashboard = () => {
       {/* ── HEADER ── */}
       <div ref={headerRef} style={{
         zIndex        : 10,
-        padding       : "12px 24px",
+        padding       : isMobile ? "10px 14px" : "12px 24px",
         display       : "flex",
-        alignItems    : "center",
+        flexDirection : isMobile ? "column" : "row",
+        alignItems    : isMobile ? "stretch" : "center",
         justifyContent: "space-between",
+        gap           : isMobile ? "8px" : "0",
         borderBottom  : "1px solid rgba(255,255,255,0.05)",
         background    : "rgba(5,5,8,0.8)",
         backdropFilter: "blur(20px)",
         flexShrink    : 0
       }}>
-        {/* Left */}
-        <div style={{ display:"flex", alignItems:"center", gap:"16px" }}>
+        {/* Left / Top row on mobile */}
+        <div style={{
+          display       : "flex",
+          alignItems    : "center",
+          gap           : "16px",
+          justifyContent: isMobile ? "space-between" : "flex-start"
+        }}>
           <div style={{ display:"flex", alignItems:"center", gap:"10px" }}>
             <div style={{
               width:"32px", height:"32px",
@@ -206,7 +220,7 @@ const Dashboard = () => {
             </span>
           </div>
 
-          {character && (
+          {character && !isMobile && (
             <div onClick={changeCharacter} style={{
               display    : "flex",
               alignItems : "center",
@@ -248,14 +262,29 @@ const Dashboard = () => {
               </span>
             </div>
           )}
+          {isMobile && (
+            <button onClick={changeCharacter} style={{
+              background   : "rgba(255,255,255,0.04)",
+              border       : "1px solid rgba(255,255,255,0.08)",
+              borderRadius : "10px",
+              padding      : "8px",
+              cursor       : "pointer",
+              display      : "flex",
+              alignItems   : "center",
+              justifyContent: "center",
+              flexShrink   : 0
+            }}>
+              <User size={16} color="rgba(255,255,255,0.5)" />
+            </button>
+          )}
         </div>
 
-        {/* Right — agent pills */}
+        {/* Agent pills */}
         <div style={{
           display   : "flex",
           gap       : "4px",
           overflowX : "auto",
-          maxWidth  : "60vw",
+          maxWidth  : isMobile ? "100%" : "60vw",
           scrollbarWidth: "none"
         }}>
           {Object.entries(AGENT_META).map(([key, meta]) => {
@@ -296,8 +325,8 @@ const Dashboard = () => {
           })}
         </div>
 
-        {/* Change character button */}
-        <button onClick={changeCharacter} style={{
+        {/* Change character button — desktop only */}
+        {!isMobile && <button onClick={changeCharacter} style={{
           display    : "flex",
           alignItems : "center",
           gap        : "6px",
@@ -322,14 +351,14 @@ const Dashboard = () => {
         }}>
           <User size={13} />
           Change Character
-        </button>
+        </button>}
       </div>
 
       {/* ── CHAT AREA ── */}
       <div ref={chatRef} style={{
         flex     : 1,
         overflowY: "auto",
-        padding  : "24px 10vw",
+        padding  : isMobile ? "16px 12px" : "24px 10vw",
         zIndex   : 5
       }}>
         {messages.map((msg, i) => {
@@ -378,7 +407,7 @@ const Dashboard = () => {
               )}
 
               <div style={{
-                maxWidth: "70%",
+                maxWidth: isMobile ? "88%" : "70%",
                 display : "flex",
                 flexDirection: "column",
                 alignItems: isUser ? "flex-end" : "flex-start"
@@ -495,7 +524,7 @@ const Dashboard = () => {
 
       {/* ── INPUT AREA ── */}
       <div style={{
-        padding      : "16px 10vw 24px",
+        padding      : isMobile ? "12px 12px 20px" : "16px 10vw 24px",
         background   : "rgba(5,5,8,0.8)",
         backdropFilter: "blur(20px)",
         borderTop    : "1px solid rgba(255,255,255,0.05)",
@@ -582,7 +611,7 @@ const Dashboard = () => {
               background: "transparent",
               border    : "none",
               color     : "#fff",
-              fontSize  : "0.92rem",
+              fontSize  : isMobile ? "1rem" : "0.92rem",
               outline   : "none",
               resize    : "none",
               fontFamily: "Inter, sans-serif",

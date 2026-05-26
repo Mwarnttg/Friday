@@ -214,7 +214,7 @@ const ResumePanel = ({ isOpen, onClose, accentColor = "#FF6B2B" }) => {
         position     : "fixed",
         top          : 0,
         right        : 0,
-        width        : "500px",
+        width        : "min(500px, 100vw)",
         height       : "100vh",
         background   : "#0a0a0f",
         border       : "1px solid rgba(255,255,255,0.07)",
