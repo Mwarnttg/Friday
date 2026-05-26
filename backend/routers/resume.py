@@ -1,10 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from fastapi.responses import StreamingResponse
-from sqlalchemy.orm import Session
 from pydantic import BaseModel
-from database import get_db
-from auth import get_current_user
-import models
 import json
 import io
 import sys
@@ -32,8 +28,9 @@ class InterviewPrepRequest(BaseModel):
     job_title: str
     company  : str
 
-# In-memory store
+# In-memory store — guest key for all users
 resume_store = {}
+GUEST_KEY    = "guest"
 
 
 def create_pdf(resume_text: str, analysis: dict = None,
@@ -42,7 +39,6 @@ def create_pdf(resume_text: str, analysis: dict = None,
     import io as _io
     from xhtml2pdf import pisa
 
-    # ── Parse resume into sections ──
     lines    = resume_text.replace('|', '\n').split('\n')
     sections = {}
     current  = 'header'
@@ -80,7 +76,6 @@ def create_pdf(resume_text: str, analysis: dict = None,
                 sections[current] = []
             sections[current].append(stripped)
 
-    # ── Name + contact ──
     header_lines = sections.get('header', [])
     name = ""
     for line in header_lines:
@@ -100,7 +95,6 @@ def create_pdf(resume_text: str, analysis: dict = None,
             contact_parts.append(line)
     contact_text = "  ·  ".join(contact_parts[:5])
 
-    # ── HTML escape ──
     def esc(text):
         return (str(text)
             .replace('&', '&amp;')
@@ -109,7 +103,6 @@ def create_pdf(resume_text: str, analysis: dict = None,
             .replace('"', '&quot;')
         )
 
-    # ── Render section ──
     def render_section(label, lines_list):
         if not lines_list:
             return ""
@@ -149,18 +142,13 @@ def create_pdf(resume_text: str, analysis: dict = None,
             safe       = esc(line.strip())
             line_lower = line.lower()
 
-            # Job title line
             if (('—' in line or '–' in line or '-' in line) and
                  any(w in line_lower for w in role_words) and
                  len(line) < 140):
                 html += f'<p class="job-title">{safe}</p>'
-
-            # Degree line
             elif (label == 'EDUCATION' and
                   any(w in line_lower for w in degree_words)):
                 html += f'<p class="job-title">{safe}</p>'
-
-            # Skills with colon
             elif label == 'TECHNICAL SKILLS' and ':' in line:
                 parts = line.split(':', 1)
                 html += (
@@ -168,32 +156,23 @@ def create_pdf(resume_text: str, analysis: dict = None,
                     f'<strong>{esc(parts[0])}:</strong>'
                     f' {esc(parts[1])}</p>'
                 )
-
-            # Bullet points
             elif (line.strip().startswith('•') or
                   line.strip().startswith('-') or
                   any(v in line_lower for v in action_verbs)):
                 clean = line.strip().lstrip('•- ').strip()
                 html += f'<p class="bullet">&#8226; {esc(clean)}</p>'
-
-            # Project title
             elif (label == 'PROJECTS' and
                   '(' in line and ')' in line and
                   len(line) < 100):
                 html += f'<p class="job-title">{safe}</p>'
-
-            # Certification bullet
             elif label == 'CERTIFICATIONS':
                 html += f'<p class="bullet">&#8226; {safe}</p>'
-
-            # Regular line
             else:
                 html += f'<p class="body-text">{safe}</p>'
 
         html += "</div></div>"
         return html
 
-    # ── Build sections HTML ──
     sections_html = ""
 
     if sections.get('summary'):
@@ -209,30 +188,18 @@ def create_pdf(resume_text: str, analysis: dict = None,
         """
 
     if sections.get('skills'):
-        sections_html += render_section(
-            'TECHNICAL SKILLS', sections['skills'])
-
+        sections_html += render_section('TECHNICAL SKILLS', sections['skills'])
     if sections.get('experience'):
-        sections_html += render_section(
-            'EXPERIENCE', sections['experience'])
-
+        sections_html += render_section('EXPERIENCE', sections['experience'])
     if sections.get('projects'):
-        sections_html += render_section(
-            'PROJECTS', sections['projects'])
-
+        sections_html += render_section('PROJECTS', sections['projects'])
     if sections.get('education'):
-        sections_html += render_section(
-            'EDUCATION', sections['education'])
-
+        sections_html += render_section('EDUCATION', sections['education'])
     if sections.get('certifications'):
-        sections_html += render_section(
-            'CERTIFICATIONS', sections['certifications'])
-
+        sections_html += render_section('CERTIFICATIONS', sections['certifications'])
     if sections.get('achievements'):
-        sections_html += render_section(
-            'ACHIEVEMENTS', sections['achievements'])
+        sections_html += render_section('ACHIEVEMENTS', sections['achievements'])
 
-    # ── Full HTML ──
     html_content = f"""<!DOCTYPE html>
 <html>
 <head>
@@ -242,13 +209,7 @@ def create_pdf(resume_text: str, analysis: dict = None,
     size: letter;
     margin: 0.55in 0.65in 0.55in 0.65in;
   }}
-
-  * {{
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-  }}
-
+  * {{ margin:0; padding:0; box-sizing:border-box; }}
   body {{
     font-family: Arial, Helvetica, sans-serif;
     font-size: 9.5pt;
@@ -256,15 +217,11 @@ def create_pdf(resume_text: str, analysis: dict = None,
     line-height: 1.4;
     background: white;
   }}
-
-  /* ── HEADER ── */
   .header {{
     margin-bottom: 14pt;
     padding-bottom: 12pt;
     border-bottom: 3pt solid #000000;
-    text-align: left;
   }}
-
   .name {{
     font-size: 26pt;
     font-weight: bold;
@@ -273,42 +230,26 @@ def create_pdf(resume_text: str, analysis: dict = None,
     margin-bottom: 5pt;
     text-transform: uppercase;
   }}
-
   .contact {{
     font-size: 8.5pt;
     color: #555555;
     line-height: 1.7;
   }}
-
-  /* ── SECTION WRAPPER ── */
-  .section {{
-    margin-bottom: 13pt;
-  }}
-
-  /* ── SECTION HEADER ── */
+  .section {{ margin-bottom: 13pt; }}
   .section-header {{
     font-size: 11pt;
     font-weight: bold;
     color: #000000;
     letter-spacing: 2.5pt;
     text-transform: uppercase;
-    margin-bottom: 0pt;
     padding-bottom: 3pt;
   }}
-
-  /* ── SECTION DIVIDER ── */
   .section-line {{
     border: none;
     border-top: 1.5pt solid #000000;
     margin-top: 2pt;
     margin-bottom: 6pt;
   }}
-
-  .section-body {{
-    padding-left: 0pt;
-  }}
-
-  /* ── JOB TITLE ── */
   .job-title {{
     font-size: 10pt;
     font-weight: bold;
@@ -316,8 +257,6 @@ def create_pdf(resume_text: str, analysis: dict = None,
     margin-top: 6pt;
     margin-bottom: 2pt;
   }}
-
-  /* ── BULLET ── */
   .bullet {{
     font-size: 9.5pt;
     color: #222222;
@@ -325,29 +264,19 @@ def create_pdf(resume_text: str, analysis: dict = None,
     margin-bottom: 2.5pt;
     line-height: 1.4;
   }}
-
-  /* ── BODY TEXT ── */
   .body-text {{
     font-size: 9.5pt;
     color: #222222;
     margin-bottom: 3pt;
     line-height: 1.45;
   }}
-
-  /* ── SKILL LINE ── */
   .skill-line {{
     font-size: 9.5pt;
     color: #222222;
     margin-bottom: 3pt;
     line-height: 1.45;
   }}
-
-  .skill-line strong {{
-    color: #000000;
-    font-weight: bold;
-  }}
-
-  /* ── FOOTER ── */
+  .skill-line strong {{ color:#000000; font-weight:bold; }}
   .footer {{
     margin-top: 16pt;
     border-top: 0.5pt solid #cccccc;
@@ -360,20 +289,15 @@ def create_pdf(resume_text: str, analysis: dict = None,
 </style>
 </head>
 <body>
-
   <div class="header">
     <div class="name">{esc(name)}</div>
     <div class="contact">{esc(contact_text)}</div>
   </div>
-
   {sections_html}
-
   <div class="footer">Generated by FRIDAY AI Platform</div>
-
 </body>
 </html>"""
 
-    # ── Convert to PDF ──
     try:
         buffer = _io.BytesIO()
         result = pisa.CreatePDF(
@@ -399,8 +323,6 @@ async def upload_resume(
     job_type        : str = Form("Full-time"),
     experience_level: str = Form("Mid-level"),
     salary_range    : str = Form("$60,000-$90,000"),
-    current_user    = Depends(get_current_user),
-    db              : Session = Depends(get_db)
 ):
     if not file.filename.endswith('.pdf'):
         raise HTTPException(status_code=400,
@@ -423,20 +345,12 @@ async def upload_resume(
 
     analysis = analyze_resume(resume_text, preferences)
 
-    resume_store[current_user.id] = {
+    resume_store[GUEST_KEY] = {
         "text"       : resume_text,
         "analysis"   : analysis,
         "preferences": preferences,
         "improved"   : None
     }
-
-    db.add(models.SearchHistory(
-        user_id    = current_user.id,
-        query      = f"Resume: {file.filename}",
-        result     = json.dumps(analysis)[:500],
-        agent_used = "resume_analyzer"
-    ))
-    db.commit()
 
     return {
         "success" : True,
@@ -446,43 +360,27 @@ async def upload_resume(
 
 
 @router.post("/improve")
-async def improve_resume_endpoint(
-    current_user = Depends(get_current_user),
-    db           : Session = Depends(get_db)
-):
-    user_data = resume_store.get(current_user.id)
+async def improve_resume_endpoint():
+    user_data = resume_store.get(GUEST_KEY)
     if not user_data:
         raise HTTPException(status_code=400,
             detail="Please upload your resume first")
-
     try:
         result = improve_resume(
             user_data["text"],
             user_data["analysis"],
             user_data["preferences"]
         )
-        resume_store[current_user.id]["improved"] = result
-
-        db.add(models.SearchHistory(
-            user_id    = current_user.id,
-            query      = "Resume improvement",
-            result     = f"Score improved to {result.get('new_score', 0)}",
-            agent_used = "resume_improver"
-        ))
-        db.commit()
-
+        resume_store[GUEST_KEY]["improved"] = result
         return {"success": True, "result": result}
-
     except Exception as e:
         raise HTTPException(status_code=500,
             detail=f"Improvement failed: {str(e)}")
 
 
 @router.get("/download-improved")
-async def download_improved_resume(
-    current_user = Depends(get_current_user)
-):
-    user_data = resume_store.get(current_user.id)
+async def download_improved_resume():
+    user_data = resume_store.get(GUEST_KEY)
     if not user_data or not user_data.get("improved"):
         raise HTTPException(status_code=400,
             detail="No improved resume found. Please improve first.")
@@ -507,10 +405,8 @@ async def download_improved_resume(
 
 
 @router.get("/download-original")
-async def download_original_resume(
-    current_user = Depends(get_current_user)
-):
-    user_data = resume_store.get(current_user.id)
+async def download_original_resume():
+    user_data = resume_store.get(GUEST_KEY)
     if not user_data:
         raise HTTPException(status_code=400,
             detail="No resume found. Please upload first.")
@@ -534,11 +430,8 @@ async def download_original_resume(
 
 
 @router.post("/cover-letter")
-async def create_cover_letter(
-    request      : CoverLetterRequest,
-    current_user = Depends(get_current_user)
-):
-    user_data = resume_store.get(current_user.id)
+async def create_cover_letter(request: CoverLetterRequest):
+    user_data = resume_store.get(GUEST_KEY)
     if not user_data:
         raise HTTPException(status_code=400,
             detail="Please upload your resume first")
@@ -553,11 +446,8 @@ async def create_cover_letter(
 
 
 @router.post("/interview-prep")
-async def get_interview_prep(
-    request      : InterviewPrepRequest,
-    current_user = Depends(get_current_user)
-):
-    user_data = resume_store.get(current_user.id)
+async def get_interview_prep(request: InterviewPrepRequest):
+    user_data = resume_store.get(GUEST_KEY)
     if not user_data:
         raise HTTPException(status_code=400,
             detail="Please upload your resume first")
@@ -571,10 +461,8 @@ async def get_interview_prep(
 
 
 @router.get("/jobs")
-async def get_job_matches(
-    current_user = Depends(get_current_user)
-):
-    user_data = resume_store.get(current_user.id)
+async def get_job_matches():
+    user_data = resume_store.get(GUEST_KEY)
     if not user_data:
         raise HTTPException(status_code=400,
             detail="Please upload your resume first")
@@ -612,10 +500,8 @@ async def get_job_matches(
 
 
 @router.get("/skills-gap")
-async def get_skills_gap(
-    current_user = Depends(get_current_user)
-):
-    user_data = resume_store.get(current_user.id)
+async def get_skills_gap():
+    user_data = resume_store.get(GUEST_KEY)
     if not user_data:
         raise HTTPException(status_code=400,
             detail="Please upload your resume first")
@@ -628,10 +514,8 @@ async def get_skills_gap(
 
 
 @router.get("/salary")
-async def get_salary(
-    current_user = Depends(get_current_user)
-):
-    user_data = resume_store.get(current_user.id)
+async def get_salary():
+    user_data = resume_store.get(GUEST_KEY)
     if not user_data:
         raise HTTPException(status_code=400,
             detail="Please upload your resume first")
@@ -646,10 +530,8 @@ async def get_salary(
 
 
 @router.get("/status")
-async def get_resume_status(
-    current_user = Depends(get_current_user)
-):
-    user_data = resume_store.get(current_user.id)
+async def get_resume_status():
+    user_data = resume_store.get(GUEST_KEY)
     if not user_data:
         return {"uploaded": False}
 

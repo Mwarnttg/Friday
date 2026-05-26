@@ -100,10 +100,9 @@ const ResumePanel = ({ isOpen, onClose, accentColor = "#FF6B2B" }) => {
   const handleGetJobs = async () => {
     setLoading("jobs");
     try {
-      const token = localStorage.getItem("friday_token");
+      
       const res   = await axios.get(
         `${API}/api/resume/jobs`,
-        { headers: { Authorization: `Bearer ${token}` }}
       );
       setJobs(res.data.jobs);
       setJobSource(res.data.source || "ai");
